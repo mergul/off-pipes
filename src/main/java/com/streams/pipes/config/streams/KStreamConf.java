@@ -54,9 +54,9 @@ public class KStreamConf {
 
     private static final String BALANCE_STORE = "share-balance-stores";
     private static final String PAYMENT_STORES = "share-payment-stores";
-    private static final String BALANCE_HISTORY_STORE = "share-balance-history-stores";
-    private static final String PAYMENT_HISTORY_STORE = "share-payment-history-stores";
-    private static final String USER_BALANCE_STORE = "share-user-balance-stores";
+//    private static final String BALANCE_HISTORY_STORE = "share-balance-history-stores";
+//    private static final String PAYMENT_HISTORY_STORE = "share-payment-history-stores";
+//    private static final String USER_BALANCE_STORE = "share-user-balance-stores";
     private static final String TOP_OFFERS_STORE = "windowed-offers-stores";
 
     @Value("${kafka.topics.sender-topics}")
@@ -65,10 +65,10 @@ public class KStreamConf {
     @Value("${kafka.topics.receiver-topics}")
     private String receiverTopic;
 
-    @Value("${kafka.topics.payments-in}")
+/*    @Value("${kafka.topics.payments-in}")
     private String paymentsTopics;
     @Value("${kafka.topics.balances-in}")
-    private String balancesTopics;
+    private String balancesTopics;*/
     @Value("${kafka.topics.offerviews-in}")
     private String offerviewsTopics;
     @Value("${spring.kafka.bootstrap-servers}")
@@ -98,7 +98,7 @@ public class KStreamConf {
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streamingStreamName");
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArray().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, JsonSerde.class);
-        props.put(StreamsConfig.STATE_DIR_CONFIG, "/home/mesut/workspacepool/pipes/data");
+        props.put(StreamsConfig.STATE_DIR_CONFIG, "/data");
         props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE);
         props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, 5);
@@ -132,8 +132,8 @@ public class KStreamConf {
     @Bean
     public KStream<byte[], RecordSSE> kStream(StreamsBuilder kStreamBuilder) {
         KStream<byte[], NewsPayload> previewsInput = kStreamBuilder.stream(receiverTopic, Consumed.with(new Serdes.ByteArraySerde(), new NewsPayloadSerde()));
-        KStream<byte[], PaymentRecord> payments = kStreamBuilder.stream(paymentsTopics, Consumed.with(new Serdes.ByteArraySerde(), new PaymentRecordSerde()));
-        KTable<byte[], BalanceRecord> balance = kStreamBuilder.table(balancesTopics, Consumed.with(new Serdes.ByteArraySerde(), new BalanceRecordSerde()));
+//        KStream<byte[], PaymentRecord> payments = kStreamBuilder.stream(paymentsTopics, Consumed.with(new Serdes.ByteArraySerde(), new PaymentRecordSerde()));
+//        KTable<byte[], BalanceRecord> balance = kStreamBuilder.table(balancesTopics, Consumed.with(new Serdes.ByteArraySerde(), new BalanceRecordSerde()));
         KStream<byte[], OfferPayload> offerviews = kStreamBuilder.stream(offerviewsTopics, Consumed.with(new Serdes.ByteArraySerde(), new OfferPayloadSerde()));
 
         KStream<OfferPayload, OfferPayload> offerstream = offerviews
@@ -153,7 +153,9 @@ public class KStreamConf {
         KTable<Windowed<OfferPayload>, Long> offerOut = offerstream
                 .groupByKey(Grouped.with(new OfferPayloadSerde(), new OfferPayloadSerde()))
                 .windowedBy(TimeWindows.of(Duration.ofHours(6L)))
-                .count();
+                .count()
+                .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
+
         // count highest news by tag
         offerOut.groupBy((key, count) -> {
                     String windowedIndustry =
@@ -217,7 +219,7 @@ public class KStreamConf {
         KTable<Windowed<NewsPayload>, Long> out = stream
                 .groupByKey(Grouped.with(new NewsPayloadSerde(), new NewsPayloadSerde()))
                 .windowedBy(TimeWindows.of(Duration.ofHours(6L)))
-                .count();
+                .count().suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
         // Serialized.with(new NewsPayloadSerde(), new NewsPayloadSerde())
         // count highest news by tag
         out.groupBy((key, count) -> {
@@ -340,6 +342,7 @@ public class KStreamConf {
 
         // <--   payments and balances -->
 
+/*
         KTable<byte[], PaymentRecord> sdf = payments.
                 flatMapValues((key, value) -> value.getIds().entrySet().stream()
                         .map(bytes -> PaymentRecord.from(value)
@@ -371,11 +374,12 @@ public class KStreamConf {
         payments.groupByKey().reduce((value1, value2) -> value2
                 , Materialized.<byte[], PaymentRecord, KeyValueStore<Bytes, byte[]>>as(PAYMENT_HISTORY_STORE)
                         .withKeySerde(Serdes.ByteArray()).withValueSerde(new PaymentRecordSerde()));
+*/
 
         return totalCount.map((key, value) -> KeyValue
                 .pair(key, new RecordSSE(new String(key), value)));
     }
-    private BalanceRecord handleBalanceRecord(PaymentRecord paymentRecord, BalanceRecord balanceRecord) {
+    /*private BalanceRecord handleBalanceRecord(PaymentRecord paymentRecord, BalanceRecord balanceRecord) {
         byte[] key = paymentRecord.getIds().keySet().iterator().next();
         Long pageViews = paymentRecord.getIds().get(key);
         if (pageViews == -1L && balanceRecord != null) {
@@ -412,12 +416,12 @@ public class KStreamConf {
         else if (totView.equals(paymentRecord.getTotalViews())) return 0.0;
       //  logger.info("handlePayment --> {} prevView --> {}  totView --> {} pageViews --> {} getTotalViews() --> {} getPayment --> {}", balanceRecord.getKey(), prevView, totView, pageViews, paymentRecord.getTotalViews(), paymentRecord.getPayment());
         return (double) (pageViews - prevView) * paymentRecord.getPayment() / (paymentRecord.getTotalViews() - totView);
-    }
-    public double getPrecision(double num){
+    }*/
+    /*public double getPrecision(double num){
         DecimalFormat df = new DecimalFormat("#.##");
         df.setRoundingMode(RoundingMode.CEILING);
         return Double.parseDouble(df.format(num));
-    }
+    }*/
 }
 //    @Primary
 //    @Bean

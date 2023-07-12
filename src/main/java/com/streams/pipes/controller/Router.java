@@ -7,6 +7,7 @@ import com.streams.pipes.model.NewsPayload;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.lang.NonNull;
@@ -50,7 +51,8 @@ public class Router {
                                 request -> ServerResponse.ok()
                                         .body(newsHandler.unsubscribeChatMessages(request.bodyToMono(String.class)), Boolean.class))
                         .andRoute(RequestPredicates.GET("/chat/room/{chatRoom}/subscribeMessages"),
-                                request -> ServerResponse.ok().header("X-Accel-Buffering", "no")
+                                request -> ServerResponse.ok().header("X-Accel-Buffering", "no").header("connection", "keep-alive")
+                                        .cacheControl(CacheControl.noCache())
                                         .contentType(MediaType.TEXT_EVENT_STREAM)
                                         .body(newsHandler.subscribeChatMessages(request.pathVariable("chatRoom")), new ParameterizedTypeReference<ServerSentEvent<T>>() {
                                             @NonNull
@@ -65,7 +67,7 @@ public class Router {
     private <T> JavaType getClazz(String chatRoom) {
         String classType = chatRoom.startsWith("TopNews") ? "com.streams.pipes.model.TopThreeHundredNews" :
                 (chatRoom.startsWith("TopTags") ? "com.streams.pipes.model.TopHundredNews" :
-                        (chatRoom.startsWith("TopTas") ? "com.streams.pipes.model.RecordSSE":"com.streams.pipes.model.BalanceRecord"));
+                        (chatRoom.startsWith("TopTas") ? "com.streams.pipes.model.RecordSSE":"com.streams.pipes.model.TopThreeHundredOffers"));
         Class<T> clazz = null;
         try {
             clazz = (Class<T>) ClassUtils.forName(classType, ClassUtils.getDefaultClassLoader());

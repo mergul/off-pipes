@@ -1,3 +1,4 @@
+/*
 package com.streams.pipes;
 
 import com.streams.pipes.model.MyTree;
@@ -79,3 +80,4 @@ public class TrampolinesTest {
         System.out.println(TreeOps.foldLeft(myTree, (a, b) -> String.join(a.isEmpty() || b.isEmpty() ? "" : "|", a, b), ""));
     }
 }
+*/

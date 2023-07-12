@@ -37,16 +37,16 @@ public class Receiver {
 
     private static final String TOP_NEWS_STORE = "windowed-news-stores";
     private static final String USER_STORE = "stream-users-stores";
-    private static final String BALANCE_STORE = "share-balance-stores";
-    private static final String BALANCE_HISTORY_STORE = "share-balance-history-stores";
-    private static final String USER_BALANCE_STORE = "share-user-balance-stores";
+//    private static final String BALANCE_STORE = "share-balance-stores";
+//    private static final String BALANCE_HISTORY_STORE = "share-balance-history-stores";
+//    private static final String USER_BALANCE_STORE = "share-user-balance-stores";
     private static final String MY_USER_STORE = "stream-musers-stores";
     private static final String TOP_OFFERS_STORE = "windowed-offers-stores";
-
-    @Value("${kafka.topics.payments-in}")
-    private String paymentsTopics;
-    @Value("${kafka.topics.balances-in}")
-    private String balancesTopics;
+//
+//    @Value("${kafka.topics.payments-in}")
+//    private String paymentsTopics;
+//    @Value("${kafka.topics.balances-in}")
+//    private String balancesTopics;
 
     private final Sender kafkaSender;
   //  private final Flux<BalanceRecord> outputEvents;
@@ -164,23 +164,23 @@ public class Receiver {
             });
             allMono.add(myOfferUsers);
 
-            RoomEntre<List<BalanceRecord>> roomEntry = (RoomEntre<List<BalanceRecord>>) this.entre;
-            // Flux<BalanceRecord> recs = getUserHistory(meId);
-            Mono<Boolean> myHistory = getUserHistory(meId).collectList().map(balanceRecords -> {
-                //  logger.info("MY balanceRecords :'{}'", balanceRecords.size());
-                if (!balanceRecords.isEmpty())
-                    roomEntry.onPostMessage(balanceRecords, "user-history", new Date(), "user-history-" + meId);
-                return true;
-            });
-            allMono.add(myHistory);
-            if (userPayload.getIsAdmin() != null && userPayload.getIsAdmin()) {
-                Mono<Boolean> myRecords = hotBalanceRecords().collectList().map(balanceRecords -> {
-                    //         logger.info("MYADMIN balanceRecords :'{}'", balanceRecords.size());
-                    roomEntry.onPostMessage(balanceRecords, "hotRecords", new Date(), "hotRecords-" + meId);
-                    return true;
-                });
-                allMono.add(myRecords);
-            }
+//            RoomEntre<List<BalanceRecord>> roomEntry = (RoomEntre<List<BalanceRecord>>) this.entre;
+//            // Flux<BalanceRecord> recs = getUserHistory(meId);
+//            Mono<Boolean> myHistory = getUserHistory(meId).collectList().map(balanceRecords -> {
+//                //  logger.info("MY balanceRecords :'{}'", balanceRecords.size());
+//                if (!balanceRecords.isEmpty())
+//                    roomEntry.onPostMessage(balanceRecords, "user-history", new Date(), "user-history-" + meId);
+//                return true;
+//            });
+//            allMono.add(myHistory);
+//            if (userPayload.getIsAdmin() != null && userPayload.getIsAdmin()) {
+//                Mono<Boolean> myRecords = hotBalanceRecords().collectList().map(balanceRecords -> {
+//                    //         logger.info("MYADMIN balanceRecords :'{}'", balanceRecords.size());
+//                    roomEntry.onPostMessage(balanceRecords, "hotRecords", new Date(), "hotRecords-" + meId);
+//                    return true;
+//                });
+//                allMono.add(myRecords);
+//            }
             Flux.fromIterable(allMono).flatMap(mono -> mono.subscribeOn(Schedulers.boundedElastic())).subscribe();
         } else {
             String tagging;
@@ -198,7 +198,7 @@ public class Receiver {
         latch.countDown();
     }
 
-    @KafkaListener(topics = "${kafka.topics.partitioncom-in}", properties = {"spring.json.value.default.type=com.streams.pipes.model.PartitionCommand", "spring.json.use.type.headers=false"})
+    /*@KafkaListener(topics = "${kafka.topics.partitioncom-in}", properties = {"spring.json.value.default.type=com.streams.pipes.model.PartitionCommand", "spring.json.use.type.headers=false"})
     public void receiveBar(PartitionCommand partitionCommand) {
 
         final Date date = new Date();
@@ -222,6 +222,8 @@ public class Receiver {
                             .withKey(paymentKey).withPayment((double) Long.parseLong(partitionCommand.getValue())).withTotalViews(totalView)
                             .withIds(nev).withDate(date).build(), paymentKey.getBytes(), true).subscribeOn(Schedulers.boundedElastic());
                 }).subscribe();
+        latch.countDown();
+    }*/
         // .thenMany(outputEvents.flatMap(balanceRecord -> {
         //                    logger.info("Partition Money outputEvents balance id => '{}' total balance => '{}'", balanceRecord.getKey(), balanceRecord.getTotalBalance());
         //                    return this.kafkaSender.send(balancesTopics, balanceRecord, balanceRecord.getKey().getBytes(), true).subscribeOn(Schedulers.parallel());
@@ -249,58 +251,56 @@ public class Receiver {
 //                        logger.info("Partition Money balance id => '{}' total balance => '{}'", balanceRecord.getKey(), balanceRecord.getTotalBalance());
 //                    return true;
 //                })).subscribe(aBoolean -> logger.info("Partition Money bool => '{}'", aBoolean));
-        latch.countDown();
-    }
 
-    @KafkaListener(topics = "${kafka.topics.paymentcom-in}", properties = {"spring.json.value.default.type=com.streams.pipes.model.PaymentCommand", "spring.json.use.type.headers=false"})
-    public void receiveBaz(PaymentCommand paymentCommand) {
+//    @KafkaListener(topics = "${kafka.topics.paymentcom-in}", properties = {"spring.json.value.default.type=com.streams.pipes.model.PaymentCommand", "spring.json.use.type.headers=false"})
+//    public void receiveBaz(PaymentCommand paymentCommand) {
+//
+//        final Date date = new Date();
+//        Map<byte[], Long> nesm = new HashMap<>();
+//        String paymentKey = String.valueOf(date.getTime());
+//        for (String il : paymentCommand.getValue()) {
+//            nesm.put(il.getBytes(), -1L);
+//        }
+//        this.kafkaSender.send(paymentsTopics, PaymentRecord.of()
+//                .withKey(paymentKey).withPayment(-1.0).withTotalViews(-1L)
+//                .withIds(nesm).withDate(date).build(), paymentKey.getBytes(), true)
+//                .subscribeOn(Schedulers.boundedElastic()).subscribe();
+//        latch.countDown();
+//    }
+//
+//    public Flux<BalanceRecord> hotBalanceRecords() {
+////        logger.info("Number of sub topologies => {}", this.factoryBean.getTopology().describe());
+//        final ListenableFuture<ReadOnlyKeyValueStore<byte[], BalanceRecord>> usersFuture = future(BALANCE_STORE);
+//        Mono<ReadOnlyKeyValueStore<byte[], BalanceRecord>> myStore = Mono.fromFuture(toCompletableFuture(usersFuture));
+//        return myStore.flatMapIterable(store -> {
+//            List<BalanceRecord> balanceRecords = new ArrayList<>();
+//            KeyValueIterator<byte[], BalanceRecord> iterator = store.all();
+//            while (iterator.hasNext()) {
+//                KeyValue<byte[], BalanceRecord> next = iterator.next();
+//                balanceRecords.add(next.value);
+//            }
+//            iterator.close();
+//            //   logger.info("BALANCE_STORE Balance Records size => {}", balanceRecords.size());
+//            return balanceRecords;
+//        });
+//    }
+//
+//    public Flux<BalanceRecord> getBalanceHistory(List<byte[]> ids) {
+//        final ListenableFuture<ReadOnlyKeyValueStore<byte[], BalanceRecord>> balanceHistory = future(BALANCE_HISTORY_STORE);
+//        Mono<ReadOnlyKeyValueStore<byte[], BalanceRecord>> history = Mono.fromFuture(toCompletableFuture(balanceHistory));
+//        //  logger.info("BALANCE_HISTORY_STORE list size => {}", ids.size());
+//        return history.flatMapMany(maStore -> Flux.fromIterable(ids).flatMap(bytes -> Mono.fromCallable(() -> maStore.get(bytes)).subscribeOn(Schedulers.boundedElastic())));
+//    }
 
-        final Date date = new Date();
-        Map<byte[], Long> nesm = new HashMap<>();
-        String paymentKey = String.valueOf(date.getTime());
-        for (String il : paymentCommand.getValue()) {
-            nesm.put(il.getBytes(), -1L);
-        }
-        this.kafkaSender.send(paymentsTopics, PaymentRecord.of()
-                .withKey(paymentKey).withPayment(-1.0).withTotalViews(-1L)
-                .withIds(nesm).withDate(date).build(), paymentKey.getBytes(), true)
-                .subscribeOn(Schedulers.boundedElastic()).subscribe();
-        latch.countDown();
-    }
-
-    public Flux<BalanceRecord> hotBalanceRecords() {
-//        logger.info("Number of sub topologies => {}", this.factoryBean.getTopology().describe());
-        final ListenableFuture<ReadOnlyKeyValueStore<byte[], BalanceRecord>> usersFuture = future(BALANCE_STORE);
-        Mono<ReadOnlyKeyValueStore<byte[], BalanceRecord>> myStore = Mono.fromFuture(toCompletableFuture(usersFuture));
-        return myStore.flatMapIterable(store -> {
-            List<BalanceRecord> balanceRecords = new ArrayList<>();
-            KeyValueIterator<byte[], BalanceRecord> iterator = store.all();
-            while (iterator.hasNext()) {
-                KeyValue<byte[], BalanceRecord> next = iterator.next();
-                balanceRecords.add(next.value);
-            }
-            iterator.close();
-            //   logger.info("BALANCE_STORE Balance Records size => {}", balanceRecords.size());
-            return balanceRecords;
-        });
-    }
-
-    public Flux<BalanceRecord> getBalanceHistory(List<byte[]> ids) {
-        final ListenableFuture<ReadOnlyKeyValueStore<byte[], BalanceRecord>> balanceHistory = future(BALANCE_HISTORY_STORE);
-        Mono<ReadOnlyKeyValueStore<byte[], BalanceRecord>> history = Mono.fromFuture(toCompletableFuture(balanceHistory));
-        //  logger.info("BALANCE_HISTORY_STORE list size => {}", ids.size());
-        return history.flatMapMany(maStore -> Flux.fromIterable(ids).flatMap(bytes -> Mono.fromCallable(() -> maStore.get(bytes)).subscribeOn(Schedulers.boundedElastic())));
-    }
-
-    public Flux<BalanceRecord> getUserHistory(String id) {
-        final ListenableFuture<ReadOnlyKeyValueStore<byte[], ByteDataAccu>> usersHistory = future(USER_BALANCE_STORE);
-        Mono<ReadOnlyKeyValueStore<byte[], ByteDataAccu>> myHistory = Mono.fromFuture(toCompletableFuture(usersHistory));
-        //     logger.info("USER_BALANCE_STORE User ID => {}", id);
-        return myHistory.flatMapMany(store -> {
-            ByteDataAccu list = store.get(id.getBytes());
-            return list != null ? this.getBalanceHistory(list.getList()) : Flux.empty();
-        });
-    }
+//    public Flux<BalanceRecord> getUserHistory(String id) {
+//        final ListenableFuture<ReadOnlyKeyValueStore<byte[], ByteDataAccu>> usersHistory = future(USER_BALANCE_STORE);
+//        Mono<ReadOnlyKeyValueStore<byte[], ByteDataAccu>> myHistory = Mono.fromFuture(toCompletableFuture(usersHistory));
+//        //     logger.info("USER_BALANCE_STORE User ID => {}", id);
+//        return myHistory.flatMapMany(store -> {
+//            ByteDataAccu list = store.get(id.getBytes());
+//            return list != null ? this.getBalanceHistory(list.getList()) : Flux.empty();
+//        });
+//    }
 
     public static <K, V> CompletableFuture<ReadOnlyKeyValueStore<K, V>> toCompletableFuture(ListenableFuture<ReadOnlyKeyValueStore<K, V>> listenableFuture) {
         final CompletableFuture<ReadOnlyKeyValueStore<K, V>> completableFuture = new CompletableFuture<>();

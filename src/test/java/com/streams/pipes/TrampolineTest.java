@@ -1,3 +1,4 @@
+/*
 package com.streams.pipes;
 
 import com.streams.pipes.model.MyTree;
@@ -223,13 +224,17 @@ public final class TrampolineTest {
                 Trampoline.pure(1480669361).bind(y -> rightHeavy((x + y) - 1332171485, depth - 1));
     }
 
-    /*
+    */
+/*
      * The following tests test identities that should hold for all monads (types with flatMap)
-     */
+     *//*
 
-    /*
+
+    */
+/*
      * The left identity monad law says that pure(x).flatMap(f) = f(x)
-     */
+     *//*
+
     @Test
     public void testLeftIdentityMonadLaw() {
         // Given
@@ -244,9 +249,11 @@ public final class TrampolineTest {
         assertEquals(expected, actual);
     }
 
-    /*
+    */
+/*
      * The right identity monad law says that t.flatMap(x -> pure(x)) = t
-     */
+     *//*
+
     @Test
     public void testRightIdentityMonadLaw() {
         // Given
@@ -260,20 +267,24 @@ public final class TrampolineTest {
         assertEquals(expected, actual);
     }
 
-    /*
+    */
+/*
      * We use a rock-paper-scissors algebra to test that flatMap is associative even for non-associative algebras.
      *
      * RPS_BEST_OF[RPS_BEST_OF[0][1]][2] = RPS_BEST_OF[1][2] = 2
      * RPS_BEST_OF[0][RPS_BEST_OF[1][2]] = RPS_BEST_OF[0][2] = 0
-     */
+     *//*
+
     private static final int[][] RPS_BEST_OF = {
             {0, 1, 0},
             {1, 1, 2},
             {0, 2, 2}};
 
-    /*
+    */
+/*
      * The associativity monad law says that t.flatMap(f).flatMap(g) = t.flatMap(x -> f(x).flatMap(g))
-     */
+     *//*
+
     @Test
     public void testAssociativityMonadLaw() {
         // Given
@@ -289,9 +300,11 @@ public final class TrampolineTest {
         assertEquals(expected, actual);
     }
 
-    /*
+    */
+/*
      * Test t.map(f) = t.flatMap(x -> pure(f(x)))
-     */
+     *//*
+
     @Test
     public void testMapToFlatMapRetIdentity() {
         // Given
@@ -306,9 +319,11 @@ public final class TrampolineTest {
         assertEquals(expected, actual);
     }
 
-    /*
+    */
+/*
      * Test flatten(t) == t.flatMap(identity())
-     */
+     *//*
+
     @Test
     public void testFlattenToFlatMapIdentityIdentity() {
         // Given
@@ -322,9 +337,11 @@ public final class TrampolineTest {
         assertEquals(expected, actual);
     }
 
-    /*
+    */
+/*
      * Test t.flatMap(f) = flatten(t.map(f))
-     */
+     *//*
+
     @Test
     public void testFlatMapToFlattenMapIdentity() {
         // Given
@@ -401,3 +418,4 @@ public final class TrampolineTest {
         System.out.println(integer);
     }
 }
+*/

@@ -24,6 +24,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     private Date lastTagsEmit;
     private Disposable disposable;
     private Disposable disposableNews;
+    private Disposable disposableOffers;
     private ServerSentEvent<T> lastRecord;
     private final Map<String, List<String>> newsIds;
     private final Map<String, List<String>> offersIds;
@@ -31,6 +32,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     private final Map<String, BaseSubscriber<ServerSentEvent<T>>> subscriberMap;
     private final Sinks.EmitFailureHandler emitFailureHandler = (signalType, emitResult) -> emitResult
             .equals(Sinks.EmitResult.FAIL_NON_SERIALIZED);
+
     public RoomEntre(@Qualifier("hotFlux") Flux<ServerSentEvent<T>> hotFlux,
                      @Qualifier("sink") Sinks.Many<ServerSentEvent<T>> sink) {
         this.hotFlux = hotFlux;
@@ -57,38 +59,46 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
                 TopThreeHundredNews threeHundredNews = new TopThreeHundredNews();
                 threeHundredNews.getList().addAll(getTopList(((TopThreeHundredNews)msg).getList()));
                 this.disposableNews= Mono.fromCallable(() -> this.sink.tryEmitNext(getMyEvent((T) threeHundredNews, key, ev)))
+                        .onErrorResume(e -> Mono.empty())
                         .subscribeOn(Schedulers.boundedElastic())
                         .thenMany(getPartialEvents(getSkipList(((TopThreeHundredNews) msg).getList()), key, ev))
                         .delayElements(Duration.ofSeconds(1L))
-                        .flatMapSequential(tEvent -> Mono.fromCallable(() -> this.sink.tryEmitNext(tEvent)))
+                        .flatMapSequential(tEvent -> Mono.fromCallable(() -> this.sink.tryEmitNext(tEvent)).onErrorResume(e -> Mono.empty()))
                         .subscribeOn(Schedulers.parallel())
                         .subscribe();
                 this.lastNewsEmit = date;
-                logger.info("emit news {} -- {} -- {}", key, date, ev);
+                logger.info("emit  {} -- {} -- {}", ev, key, date);
             }
         } else if (msg instanceof TopThreeHundredOffers) {
             if (key.equals("me") || key.equals("my") || (this.lastNewsEmit == null || date == null)) {
                 TopThreeHundredOffers threeHundredOffers = new TopThreeHundredOffers();
                 threeHundredOffers.getList().addAll(getTopOfferList(((TopThreeHundredOffers)msg).getList()));
-                Mono.fromCallable(() -> this.sink.tryEmitNext(getMyEvent((T) threeHundredOffers, key, ev)))
+                this.disposableOffers= Mono.fromCallable(() -> this.sink.tryEmitNext(getMyEvent((T) threeHundredOffers, key, ev)))
+                        .onErrorResume(e -> Mono.empty())
                         .subscribeOn(Schedulers.boundedElastic())
                         .thenMany(getPartialOfferEvents(getSkipOfferList(((TopThreeHundredOffers) msg).getList()), key, ev))
                         .delayElements(Duration.ofSeconds(1L))
-                        .flatMapSequential(tEvent -> Mono.fromCallable(() -> this.sink.tryEmitNext(tEvent)))
+                        .flatMapSequential(tEvent -> Mono.fromCallable(() -> this.sink.tryEmitNext(tEvent)).onErrorResume(e -> Mono.empty()))
                         .subscribeOn(Schedulers.parallel())
                         .subscribe();
                 this.lastNewsEmit = date;
-              //  logger.info("emit offers {} -- {} -- {}", key, date, ev);
+              //  logger.info("emit offers {} -- {} -- {}", ev, key, date);
             }
         } else if (msg instanceof TopHundredNews) {
             if (this.lastTagsEmit == null || date == null
                     || ((date.getTime() - this.lastTagsEmit.getTime()) / (1000) % 60) > 30) {
-                this.sink.tryEmitNext(getMyEvent(msg, key, ev));
+                Mono.fromCallable(() -> this.sink.tryEmitNext(getMyEvent(msg, key, ev)))
+                        .onErrorResume(e -> Mono.empty())
+                        .subscribeOn(Schedulers.boundedElastic()).subscribe();
+                logger.info("emit  {} -- {} -- {}", ev, key, date);
                 this.lastTagsEmit = date;
             }
         } else {
           //  logger.info("finished BalanceRecord key {}, event {}, total balance --> {}", key, ev, ((BalanceRecord) msg).getTotalBalance());
-            this.sink.tryEmitNext(getMyEvent(msg, key, ev));
+            Mono.fromCallable(() -> this.sink.tryEmitNext(getMyEvent(msg, key, ev)))
+                    .onErrorResume(e -> Mono.empty())
+                    .subscribeOn(Schedulers.boundedElastic()).subscribe();
+            logger.info("emit  {} -- {} -- {}", ev, key, date);
         }
         this.lastRecord=getMyEvent(msg, key, ev);
         emitHeartBeat(key);
@@ -100,6 +110,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
             public void hookOnSubscribe(Subscription subscription) {
                 request(1);
             }
+            @Override
             public void hookOnNext(ServerSentEvent<T> value) {
                 request(1);
             }
@@ -122,7 +133,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     }
 
     public ServerSentEvent<T> getMyEvent(T msg, String key, String ev) {
-        return ServerSentEvent.<T>builder().event(ev).data(msg).id(key).build();
+        return ServerSentEvent.<T>builder().event(ev).data(msg).id(key).comment("keep alive").build();
     }
 
     public Collection<NewsPayload> getTopList(Collection<NewsPayload> list) {
@@ -144,8 +155,8 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
             TopThreeHundredNews titan = new TopThreeHundredNews();
             titan.getList().addAll(list);
          //   logger.info("finished bounded {}, -- {}, -- {}", key, ev, list.size());
-            return Mono.fromCallable(() -> getMyEvent((T) titan, key, ev));
-        });
+            return Mono.fromCallable(() -> getMyEvent((T) titan, key, ev)).onErrorResume(e -> Mono.empty());
+        }).retry();
     }
     public Flux<ServerSentEvent<T>> getPartialOfferEvents(List<OfferPayload> msgList, String key, String ev) {
         Iterable<List<OfferPayload>> lists = Lists.partition(msgList, 10);
@@ -153,8 +164,8 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
             TopThreeHundredOffers titan = new TopThreeHundredOffers();
             titan.getList().addAll(list);
             //   logger.info("finished bounded {}, -- {}, -- {}", key, ev, list.size());
-            return Mono.fromCallable(() -> getMyEvent((T) titan, key, ev));
-        });
+            return Mono.fromCallable(() -> getMyEvent((T) titan, key, ev)).onErrorResume(e -> Mono.empty());
+        }).retry();
     }
     public Mono<Boolean> unsubscribe(String chatRoom) {
         if (!this.subscriberMap.isEmpty()) {
@@ -163,7 +174,8 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
                 busses.cancel();
                 this.subscriberMap.remove(chatRoom);
                 this.disposable.dispose();
-                this.disposableNews.dispose();
+                if(this.disposableNews!=null) this.disposableNews.dispose();
+                if(this.disposableOffers!=null) this.disposableOffers.dispose();
                 logger.info("BaseSubscriber to cancel chatRoom {}, subscriberMap size {}", chatRoom, subscriberMap.size());
             }
         }

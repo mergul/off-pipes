@@ -22,25 +22,25 @@ public class KAdminConf {
 
     @Value("${kafka.topics.auths}")
     private String authTopic;
-    @Value("${kafka.topics.payments-in}")
-    private String paymentsTopic;
+//    @Value("${kafka.topics.payments-in}")
+//    private String paymentsTopic;
+//
+//    @Value("${kafka.topics.balances-in}")
+//    private String balancesTopic;
 
-    @Value("${kafka.topics.balances-in}")
-    private String balancesTopic;
-
-
-    @Value("${kafka.topics.listcom-in}")
-    private String listcomTopics;
-    @Value("${kafka.topics.partitioncom-in}")
-    private String partitioncomTopics;
-    @Value("${kafka.topics.paymentcom-in}")
-    private String paymentcomTopics;
-    @Value("${kafka.topics.balancecom-in}")
-    private String balancecomTopics;
-    @Value("${kafka.topics.checkout-in}")
-    private String checkoutTopics;
-    @Value("${kafka.topics.usersHistories-in}")
-    private String usersHistoriesTopics;
+//
+//    @Value("${kafka.topics.listcom-in}")
+//    private String listcomTopics;
+//    @Value("${kafka.topics.partitioncom-in}")
+//    private String partitioncomTopics;
+//    @Value("${kafka.topics.paymentcom-in}")
+//    private String paymentcomTopics;
+//    @Value("${kafka.topics.balancecom-in}")
+//    private String balancecomTopics;
+//    @Value("${kafka.topics.checkout-in}")
+//    private String checkoutTopics;
+//    @Value("${kafka.topics.usersHistories-in}")
+//    private String usersHistoriesTopics;
     @Value("${kafka.topics.offerviews-in}")
     private String offerviewsTopics;
 
@@ -76,68 +76,68 @@ public class KAdminConf {
                 .replicas(1)
                 .build();
     }
-    @Bean
-    public NewTopic paymentTopic() {
-        return TopicBuilder.name(paymentsTopic)
-                .partitions(1)
-                .replicas(1)
-                .build();
-    }
-    @Bean
-    public NewTopic balancesTopic() {
-        return TopicBuilder.name(balancesTopic)
-                .partitions(1)
-                .replicas(1)
-                .build();
-    }
-    @Bean
-    public NewTopic listTopic() {
-        return TopicBuilder.name(listcomTopics)
-                .partitions(1)
-                .replicas(1)
-//                .compact()
-                .build();
-    }
-    @Bean
-    public NewTopic paymentComTopic() {
-        return TopicBuilder.name(paymentcomTopics)
-                .partitions(1)
-                .replicas(1)
-//                .compact()
-                .build();
-    }
-    @Bean
-    public NewTopic balanceComTopic() {
-        return TopicBuilder.name(balancecomTopics)
-                .partitions(1)
-                .replicas(1)
-//                .compact()
-                .build();
-    }
-    @Bean
-    public NewTopic partitionTopic() {
-        return TopicBuilder.name(partitioncomTopics)
-                .partitions(1)
-                .replicas(1)
-//                .compact()
-                .build();
-    }
-    @Bean
-    public NewTopic historyTopic() {
-        return TopicBuilder.name(usersHistoriesTopics)
-                .partitions(1)
-                .replicas(1)
-//                .compact()
-                .build();
-    }
-    @Bean
-    public NewTopic checkoutTopic() {
-        return TopicBuilder.name(checkoutTopics)
-                .partitions(1)
-                .replicas(1)
-//                .compact()
-                .build();
-    }
+//    @Bean
+//    public NewTopic paymentTopic() {
+//        return TopicBuilder.name(paymentsTopic)
+//                .partitions(1)
+//                .replicas(1)
+//                .build();
+//    }
+//    @Bean
+//    public NewTopic balancesTopic() {
+//        return TopicBuilder.name(balancesTopic)
+//                .partitions(1)
+//                .replicas(1)
+//                .build();
+//    }
+//    @Bean
+//    public NewTopic listTopic() {
+//        return TopicBuilder.name(listcomTopics)
+//                .partitions(1)
+//                .replicas(1)
+////                .compact()
+//                .build();
+//    }
+//    @Bean
+//    public NewTopic paymentComTopic() {
+//        return TopicBuilder.name(paymentcomTopics)
+//                .partitions(1)
+//                .replicas(1)
+////                .compact()
+//                .build();
+//    }
+//    @Bean
+//    public NewTopic balanceComTopic() {
+//        return TopicBuilder.name(balancecomTopics)
+//                .partitions(1)
+//                .replicas(1)
+////                .compact()
+//                .build();
+//    }
+//    @Bean
+//    public NewTopic partitionTopic() {
+//        return TopicBuilder.name(partitioncomTopics)
+//                .partitions(1)
+//                .replicas(1)
+////                .compact()
+//                .build();
+//    }
+//    @Bean
+//    public NewTopic historyTopic() {
+//        return TopicBuilder.name(usersHistoriesTopics)
+//                .partitions(1)
+//                .replicas(1)
+////                .compact()
+//                .build();
+//    }
+//    @Bean
+//    public NewTopic checkoutTopic() {
+//        return TopicBuilder.name(checkoutTopics)
+//                .partitions(1)
+//                .replicas(1)
+////                .compact()
+//                .build();
+//    }
     @Bean
     public NewTopic offerviewsTopic() {
         return TopicBuilder.name(offerviewsTopics)
