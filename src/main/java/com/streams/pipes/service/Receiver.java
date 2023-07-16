@@ -75,7 +75,7 @@ public class Receiver {
         Mono<ReadOnlyKeyValueStore<String, TopThreeHundredNews>> topNewsStores = Mono.fromFuture(toCompletableFuture(topNewsFuture));
 
         if (userPayload.getIndex().equals(0)) {
-            List<Mono<Boolean>> allMono = new ArrayList<>();
+           // List<Mono<Boolean>> allMono = new ArrayList<>();
             TopThreeHundredNews titan = new TopThreeHundredNews();
             Mono<Boolean> myTags = topNewsStores.flatMapMany(store -> {
                 TopThreeHundredNews thn = store.get(meId);
@@ -95,7 +95,7 @@ public class Receiver {
                 chatRoomEntry.onPostMessage(titan, "tags", null, "top-news-tags-" + meId + '-' + userPayload.getRandom());
                 return true;
             });
-            allMono.add(myTags);
+            // allMono.add(myTags);
             TopThreeHundredNews python = new TopThreeHundredNews();
             Mono<Boolean> myUsers = topNewsStores.flatMapMany(store -> Flux.fromIterable(userPayload.getUsers())
                     .publishOn(Schedulers.boundedElastic()).map(sid -> {
@@ -110,16 +110,16 @@ public class Receiver {
                 chatRoomEntry.onPostMessage(python, "people", null, "top-news-people-" + meId + '-' + userPayload.getRandom());
                 return true;
             });
-            allMono.add(myUsers);
+            // allMono.add(myUsers);
             RoomEntre<RecordSSE> chatRoomEntry1 = (RoomEntre<RecordSSE>) this.entre;
             final ListenableFuture<ReadOnlyKeyValueStore<byte[], Long>> usersFuture = future(USER_STORE);
             Mono<ReadOnlyKeyValueStore<byte[], Long>> usersStores = Mono.fromFuture(toCompletableFuture(usersFuture));
-            Mono<Boolean> mySSE = usersStores.map(store -> {
+            Mono<Boolean> myCounts = usersStores.map(store -> {
                 chatRoomEntry1.onPostMessage(new RecordSSE(meId, store.get(meId.getBytes())), meId, null, "user-counts-" + meId);
               //  logger.info("MY record-sse list :'{}'", meId);
                 return true;
             });
-            allMono.add(mySSE);
+            // allMono.add(myCounts);
 
             TopThreeHundredOffers titanic = new TopThreeHundredOffers();
             RoomEntre<TopThreeHundredOffers> chatRoomEntry0 = (RoomEntre<TopThreeHundredOffers>) this.entre;
@@ -147,7 +147,7 @@ public class Receiver {
                 chatRoomEntry0.onPostMessage(titanic, "tags", null, "top-offers-tags-" + meId + '-' + userPayload.getRandom());
                 return true;
             });
-            allMono.add(myOffers);
+           // allMono.add(myOffers);
             TopThreeHundredOffers pitanic = new TopThreeHundredOffers();
             Mono<Boolean> myOfferUsers = topOffersStores.flatMapMany(store -> Flux.fromIterable(userPayload.getUsers())
                     .publishOn(Schedulers.boundedElastic()).map(sid -> {
@@ -162,7 +162,7 @@ public class Receiver {
                 chatRoomEntry0.onPostMessage(pitanic, "people", null, "top-offers-people-" + meId + '-' + userPayload.getRandom());
                 return true;
             });
-            allMono.add(myOfferUsers);
+           // allMono.add(myOfferUsers);
 
 //            RoomEntre<List<BalanceRecord>> roomEntry = (RoomEntre<List<BalanceRecord>>) this.entre;
 //            // Flux<BalanceRecord> recs = getUserHistory(meId);
@@ -181,7 +181,8 @@ public class Receiver {
 //                });
 //                allMono.add(myRecords);
 //            }
-            Flux.fromIterable(allMono).flatMap(mono -> mono.subscribeOn(Schedulers.boundedElastic())).subscribe();
+            Mono.zip(myUsers.subscribeOn(Schedulers.boundedElastic()), myTags.subscribeOn(Schedulers.boundedElastic()), myCounts.subscribeOn(Schedulers.boundedElastic()), myOffers.subscribeOn(Schedulers.boundedElastic()), myOfferUsers.subscribeOn(Schedulers.boundedElastic())).subscribe();
+            //Flux.fromIterable(allMono).flatMap(mono -> mono.subscribeOn(Schedulers.boundedElastic())).subscribe();
         } else {
             String tagging;
             if (userPayload.getIndex().equals(2)) tagging = userPayload.getUsers().get(0);
@@ -190,7 +191,7 @@ public class Receiver {
                 TopThreeHundredNews thn = store.get(tagging);
                 if (thn != null) {
                     chatRoomEntry.getNewsIds().put(tagging, thn.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList()));
-                    chatRoomEntry.onPostMessage(thn, tagging.charAt(0) == '@' ? "me" : "tag", null, "top-news-" + tagging + '-' + userPayload.getRandom());
+                    chatRoomEntry.onPostMessage(thn, tagging.charAt(0) == '@' ? "person" : "tag", null, "top-news-" + tagging + '-' + userPayload.getRandom());
                 }
                 return true;
             }).subscribe();

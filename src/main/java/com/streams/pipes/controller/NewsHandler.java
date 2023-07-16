@@ -101,6 +101,7 @@ public class NewsHandler {
             return true;
         });
         return Mono.zip(fir.subscribeOn(Schedulers.boundedElastic()), firn.subscribeOn(Schedulers.boundedElastic()), firs.subscribeOn(Schedulers.boundedElastic())).map(objects -> objects.getT1()&&objects.getT2()&&objects.getT3());
+        //return fir.then(firs).then(firn);
     }
 
     @SuppressWarnings("unchecked")
@@ -119,7 +120,7 @@ public class NewsHandler {
         Mono<ReadOnlyKeyValueStore<String, TopThreeHundredOffers>> topOffersStores = Mono.fromFuture(Receiver.toCompletableFuture(topOffersFuture));
         Mono<Boolean> fir = topOffersStores.map(store -> {
             chatRoomEntry0.onPostMessage(store.get(id), "me", null, "top-offers-" + id + '-' + random);
-            chatRoomEntry0.onPostMessage(store.get('@'+id), "my", null, "top-offers-" + id + '-' + random);
+            chatRoomEntry0.onPostMessage(store.get('@'+id), "my", null, "top-offers-" + '@'+id + '-' + random);
             return true;
         });
 
@@ -130,8 +131,8 @@ public class NewsHandler {
             chatRoomEntry1.onPostMessage(new RecordSSE(id, store.get(id.getBytes())), id, null, "user-counts-" + id);
             return true;
         });
-
         return Mono.zip(ff.subscribeOn(Schedulers.boundedElastic()), af.subscribeOn(Schedulers.boundedElastic()), fir.subscribeOn(Schedulers.boundedElastic())).map(objects -> objects.getT1()&&objects.getT2()&&objects.getT3());
+        //return ff.then(af).then(fir);
     }
     Mono<Boolean> setNewsCounts(Mono<NewsPayload> payloadMono) {
         return payloadMono.flatMap(newsPayload -> this.kafkaSender.send(receiverTopic, newsPayload, newsPayload.getId().toHexString().getBytes(), true).subscribeOn(Schedulers.boundedElastic()));

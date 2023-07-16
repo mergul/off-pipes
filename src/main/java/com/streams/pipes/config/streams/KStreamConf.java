@@ -153,8 +153,8 @@ public class KStreamConf {
         KTable<Windowed<OfferPayload>, Long> offerOut = offerstream
                 .groupByKey(Grouped.with(new OfferPayloadSerde(), new OfferPayloadSerde()))
                 .windowedBy(TimeWindows.of(Duration.ofHours(6L)))
-                .count()
-                .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
+                .count();
+                //.suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
 
         // count highest news by tag
         offerOut.groupBy((key, count) -> {
@@ -219,7 +219,8 @@ public class KStreamConf {
         KTable<Windowed<NewsPayload>, Long> out = stream
                 .groupByKey(Grouped.with(new NewsPayloadSerde(), new NewsPayloadSerde()))
                 .windowedBy(TimeWindows.of(Duration.ofHours(6L)))
-                .count().suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
+                .count();
+               // .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
         // Serialized.with(new NewsPayloadSerde(), new NewsPayloadSerde())
         // count highest news by tag
         out.groupBy((key, count) -> {
@@ -254,7 +255,7 @@ public class KStreamConf {
                     tthNews.getList().addAll(diffList);
                     List<String> newList = value.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList());
                     if (key.charAt(0) == '@') {
-                       chatRoomEntry.onPostMessage(tthNews, "me", new Date(), "top-news-" + key);
+                       chatRoomEntry.onPostMessage(tthNews, "person", new Date(), "top-news-" + key);
                     } else if (key.charAt(0) == ('m')) {
                        chatRoomEntry.onPostMessage(tthNews, key, new Date(), "top-news");
                     } else {
