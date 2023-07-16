@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class Receiver {
-   private static final Logger logger = LoggerFactory.getLogger(Sender.class);
+  // private static final Logger logger = LoggerFactory.getLogger(Sender.class);
 
     private static final String TOP_NEWS_STORE = "windowed-news-stores";
     private static final String USER_STORE = "stream-users-stores";

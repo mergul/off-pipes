@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 @EnableKafka
 @EnableKafkaStreams
 public class KStreamConf {
-    private static final Logger logger = LoggerFactory.getLogger(KStreamConf.class);
+ //   private static final Logger logger = LoggerFactory.getLogger(KStreamConf.class);
     private static final String TOP_NEWS_STORE = "windowed-news-stores";
     private static final String TOP_USERS_STORE = "windowed-users-stores";
     private static final String NEWS_STORE = "stream-news-stores";
@@ -122,9 +122,9 @@ public class KStreamConf {
                 startupLatch.countDown();
             }
              else if (newState != KafkaStreams.State.RUNNING) {
-                logger.info("State is => Not Ready");
+            //    logger.info("State is => Not Ready");
              }
-            logger.info("State transition from " + oldState + " to " + newState);
+           // logger.info("State transition from " + oldState + " to " + newState);
         });
     }
 
