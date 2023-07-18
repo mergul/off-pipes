@@ -31,11 +31,7 @@ import org.springframework.kafka.support.converter.ByteArrayJsonMessageConverter
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerde;
-import org.springframework.kafka.support.serializer.JsonSerializer;
-import reactor.core.scheduler.Schedulers;
 
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -51,12 +47,6 @@ public class KStreamConf {
     private static final String NEWS_STORE = "stream-news-stores";
     private static final String USER_STORE = "stream-users-stores";
     private static final String MY_USER_STORE = "stream-musers-stores";
-
-    private static final String BALANCE_STORE = "share-balance-stores";
-    private static final String PAYMENT_STORES = "share-payment-stores";
-//    private static final String BALANCE_HISTORY_STORE = "share-balance-history-stores";
-//    private static final String PAYMENT_HISTORY_STORE = "share-payment-history-stores";
-//    private static final String USER_BALANCE_STORE = "share-user-balance-stores";
     private static final String TOP_OFFERS_STORE = "windowed-offers-stores";
 
     @Value("${kafka.topics.sender-topics}")
@@ -65,17 +55,11 @@ public class KStreamConf {
     @Value("${kafka.topics.receiver-topics}")
     private String receiverTopic;
 
-/*    @Value("${kafka.topics.payments-in}")
-    private String paymentsTopics;
-    @Value("${kafka.topics.balances-in}")
-    private String balancesTopics;*/
     @Value("${kafka.topics.offerviews-in}")
     private String offerviewsTopics;
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
     public final static CountDownLatch startupLatch = new CountDownLatch(1);
-
-   // private final FluxSink<BalanceRecord> fluxSink;
     private final ObjectMapper objectMapper;
     private final RoomEntre<?> entre;
     private final Sender kafkaSender;
@@ -83,10 +67,8 @@ public class KStreamConf {
     public KStreamConf(ObjectMapper objectMapper, RoomEntre<?> entre/*, @Qualifier(value = "miProcessor") UnicastProcessor<BalanceRecord> eventPublisher*/, Sender kafkaSender) {
         this.objectMapper = objectMapper;
         this.entre = entre;
-     //   this.fluxSink = eventPublisher.sink(FluxSink.OverflowStrategy.LATEST);
         this.kafkaSender = kafkaSender;
     }
-
     @Bean
     public RecordMessageConverter converter() {
         return new ByteArrayJsonMessageConverter();
@@ -132,8 +114,6 @@ public class KStreamConf {
     @Bean
     public KStream<byte[], RecordSSE> kStream(StreamsBuilder kStreamBuilder) {
         KStream<byte[], NewsPayload> previewsInput = kStreamBuilder.stream(receiverTopic, Consumed.with(new Serdes.ByteArraySerde(), new NewsPayloadSerde()));
-//        KStream<byte[], PaymentRecord> payments = kStreamBuilder.stream(paymentsTopics, Consumed.with(new Serdes.ByteArraySerde(), new PaymentRecordSerde()));
-//        KTable<byte[], BalanceRecord> balance = kStreamBuilder.table(balancesTopics, Consumed.with(new Serdes.ByteArraySerde(), new BalanceRecordSerde()));
         KStream<byte[], OfferPayload> offerviews = kStreamBuilder.stream(offerviewsTopics, Consumed.with(new Serdes.ByteArraySerde(), new OfferPayloadSerde()));
 
         KStream<OfferPayload, OfferPayload> offerstream = offerviews
@@ -337,146 +317,8 @@ public class KStreamConf {
                     chatRoomEntry.onPostMessage(new RecordSSE(new String(key), value), new String(key), new Date(), "user-counts");
                     return key;
                 });
-//        userCounts.merge(totalCount).merge(newsCounts).map((key, value) -> KeyValue
-//                .pair(key, new RecordSSE(new String(key), value)))
-//                .through(senderTopic, Produced.with(new Serdes.ByteArraySerde(), new RecordSSESerde()));
-
-        // <--   payments and balances -->
-
-/*
-        KTable<byte[], PaymentRecord> sdf = payments.
-                flatMapValues((key, value) -> value.getIds().entrySet().stream()
-                        .map(bytes -> PaymentRecord.from(value)
-                                .withIds(Collections.singletonMap(bytes.getKey(), bytes.getValue()))
-                                .build()).collect(Collectors.toList()))
-                .map((key1, value1) -> new KeyValue<>(value1.getIds().keySet().iterator().next(), value1)).groupByKey()
-                .reduce((value1, value2) -> PaymentRecord.from(value2).build()
-                        , Materialized.<byte[], PaymentRecord, KeyValueStore<Bytes, byte[]>>as(PAYMENT_STORES)
-                                .withKeySerde(Serdes.ByteArray())
-                                .withValueSerde(new PaymentRecordSerde()));
-
-        KTable<byte[], BalanceRecord> balanceHistory = sdf.toStream().leftJoin(balance, this::handleBalanceRecord
-                , Joined.with(Serdes.ByteArray(), new PaymentRecordSerde(), new BalanceRecordSerde()))
-                .filter((key, value) -> value.getPayedViews() > 0).groupByKey().reduce((value1, value2) -> BalanceRecord.from(value2).build()
-                        , Materialized.<byte[], BalanceRecord, KeyValueStore<Bytes, byte[]>>as(BALANCE_STORE)
-                                .withKeySerde(Serdes.ByteArray())
-                                .withValueSerde(new BalanceRecordSerde()));
-
-        KTable<byte[], BalanceRecord> balanceRecordKTable=balanceHistory.toStream().map((key, value) -> KeyValue.pair((value.getKey() + value.getPaymentKey()).getBytes(), value)).groupByKey()
-                .reduce((value1, value2) -> value2, Materialized.<byte[], BalanceRecord, KeyValueStore<Bytes, byte[]>>as(BALANCE_HISTORY_STORE)
-                        .withKeySerde(Serdes.ByteArray()).withValueSerde(new BalanceRecordSerde()));
-
-        balanceRecordKTable.toStream().map((key1, value1) -> KeyValue.pair(value1.getKey().getBytes(), key1))
-                .groupByKey().aggregate(ByteDataAccu::new, (key, value, aggregate) -> aggregate.add(value)
-                , Materialized.<byte[], ByteDataAccu, KeyValueStore<Bytes, byte[]>>as(USER_BALANCE_STORE)
-                        .withKeySerde(Serdes.ByteArray())
-                        .withValueSerde(Serdes.serdeFrom(new JsonSerializer<>(), new JsonDeserializer<>(ByteDataAccu.class))));
-
-        payments.groupByKey().reduce((value1, value2) -> value2
-                , Materialized.<byte[], PaymentRecord, KeyValueStore<Bytes, byte[]>>as(PAYMENT_HISTORY_STORE)
-                        .withKeySerde(Serdes.ByteArray()).withValueSerde(new PaymentRecordSerde()));
-*/
 
         return totalCount.map((key, value) -> KeyValue
                 .pair(key, new RecordSSE(new String(key), value)));
     }
-    /*private BalanceRecord handleBalanceRecord(PaymentRecord paymentRecord, BalanceRecord balanceRecord) {
-        byte[] key = paymentRecord.getIds().keySet().iterator().next();
-        Long pageViews = paymentRecord.getIds().get(key);
-        if (pageViews == -1L && balanceRecord != null) {
-            pageViews = balanceRecord.getPageviews();
-        }
-        Long payedViews = balanceRecord == null ? pageViews : pageViews - balanceRecord.getPageviews();
-        double prevBalance = balanceRecord == null ? 0.0 : balanceRecord.getTotalBalance();
-        double currBalance = getPrecision(handlePayment(pageViews, paymentRecord, balanceRecord));
-        BalanceRecord br = BalanceRecord.of()
-                .withKey(new String(key))
-                .withPageviews(pageViews)
-                .withPaymentKey(paymentRecord.getKey())
-                .withPayment(currBalance)
-                .withTotalViews(paymentRecord.getTotalViews() == -1L ? (balanceRecord != null ? balanceRecord.getTotalViews() : 0L) : paymentRecord.getTotalViews())
-                .withPayedViews(payedViews)
-                .withTotalBalance(prevBalance + currBalance)
-                .withMustPay(false)
-                .withDate(paymentRecord.getDate())
-                .build();
-        if (br.getPayment()!=0.0) {
-        //    logger.info("handleBalanceRecord --> {} total --> {}  currBalance --> {} prevBalance --> {}", br.getKey(), br.getTotalBalance(), currBalance, prevBalance);
-            RoomEntre<BalanceRecord> chatRoomEntry = (RoomEntre<BalanceRecord>) this.entre;
-            chatRoomEntry.onPostMessage(br, "hotRecords", new Date(), "hotRecords-" + br.getKey());
-            chatRoomEntry.onPostMessage(br, "user-history", new Date(), "user-history-" + br.getKey());
-        }
-        this.kafkaSender.send(balancesTopics, br, br.getKey().getBytes(), true).subscribeOn(Schedulers.boundedElastic()).subscribe();
-        return br;
-    }
-
-    public double handlePayment(Long pageViews, PaymentRecord paymentRecord, BalanceRecord balanceRecord) {
-        Long prevView = balanceRecord != null ? balanceRecord.getPageviews() : 0L;
-        Long totView = balanceRecord != null ? balanceRecord.getTotalViews() : 0L;
-        if (paymentRecord.getPayment() == -1.0 && balanceRecord != null) return -balanceRecord.getTotalBalance();
-        else if (totView.equals(paymentRecord.getTotalViews())) return 0.0;
-      //  logger.info("handlePayment --> {} prevView --> {}  totView --> {} pageViews --> {} getTotalViews() --> {} getPayment --> {}", balanceRecord.getKey(), prevView, totView, pageViews, paymentRecord.getTotalViews(), paymentRecord.getPayment());
-        return (double) (pageViews - prevView) * paymentRecord.getPayment() / (paymentRecord.getTotalViews() - totView);
-    }*/
-    /*public double getPrecision(double num){
-        DecimalFormat df = new DecimalFormat("#.##");
-        df.setRoundingMode(RoundingMode.CEILING);
-        return Double.parseDouble(df.format(num));
-    }*/
 }
-//    @Primary
-//    @Bean
-//    public StreamsBuilderFactoryBeanCustomizer customizerInfra(){
-//        return fb -> fb.setInfrastructureCustomizer(new KafkaStreamsInfrastructureCustomizer() {
-//
-//            @SuppressWarnings("unchecked")
-//            @Override
-//            public void configureBuilder(StreamsBuilder builder) {
-//                KStreamConf.this.builderConfigured.set(true);
-//                StoreBuilder<?> storeBuilder1 = Stores.keyValueStoreBuilder(
-//                        Stores.persistentKeyValueStore(TOP_NEWS_STORE),
-//                        Serdes.ByteArray(),
-//                        new TopThreeHundredSerde(objectMapper));
-//                StoreBuilder<?> storeBuilder2 = Stores.keyValueStoreBuilder(
-//                        Stores.persistentKeyValueStore(TOP_USERS_STORE),
-//                        Serdes.ByteArray(),
-//                        new TopHundredSerde(objectMapper));
-//                StoreBuilder<?> storeBuilder3 = Stores.keyValueStoreBuilder(
-//                        Stores.persistentKeyValueStore(NEWS_STORE),
-//                        Serdes.ByteArray(),
-//                        Serdes.Long());
-//                StoreBuilder<?> storeBuilder4 = Stores.keyValueStoreBuilder(
-//                        Stores.persistentKeyValueStore(USER_STORE),
-//                        Serdes.ByteArray(),
-//                        Serdes.Long());
-//                StoreBuilder<?> storeBuilder5 = Stores.keyValueStoreBuilder(
-//                        Stores.persistentKeyValueStore(MY_USER_STORE),
-//                        Serdes.ByteArray(),
-//                        Serdes.Long());
-//                builder.addStateStore(storeBuilder1);
-//                builder.addStateStore(storeBuilder2);
-//                builder.addStateStore(storeBuilder3);
-//                builder.addStateStore(storeBuilder4);
-//                builder.addStateStore(storeBuilder5);
-//
-//            }
-//
-//            @Override
-//            public void configureTopology(Topology topology) {
-//                KStreamConf.this.topologyConfigured.set(true);
-//            }
-//        });
-//    }
-//    @Bean
-//    public RecordMessageConverter converter() {
-//        ByteArrayJsonMessageConverter converter = new ByteArrayJsonMessageConverter();
-//        DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
-//        typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID);
-//        typeMapper.addTrustedPackages("com.example.demo.model");
-//        Map<String, Class<?>> mappings = new HashMap<>();
-//        mappings.put("user", UserPayload.class);
-//        mappings.put("news", NewsPayload.class);
-//        typeMapper.setIdClassMapping(mappings);
-//        converter.setTypeMapper(typeMapper);
-//        return converter;
-//    }
