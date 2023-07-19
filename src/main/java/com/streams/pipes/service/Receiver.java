@@ -6,34 +6,32 @@ import com.streams.pipes.config.streams.KStreamConf;
 import com.streams.pipes.model.*;
 import lombok.SneakyThrows;
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StoreQueryParameters;
-import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.function.Tuples;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.util.stream.Collectors;
 
 @Service
 public class Receiver {
-  // private static final Logger logger = LoggerFactory.getLogger(Sender.class);
+    // private static final Logger logger = LoggerFactory.getLogger(Sender.class);
 
     private static final String TOP_NEWS_STORE = "windowed-news-stores";
     private static final String USER_STORE = "stream-users-stores";
@@ -57,19 +55,19 @@ public class Receiver {
     @SneakyThrows
     @KafkaListener(topics = "${kafka.topics.auths}", properties = {"spring.json.value.default.type=com.streams.pipes.model.UserPayload", "spring.json.use.type.headers=false"})
     public void receiveFoo(UserPayload userPayload) {
-      //  logger.info("received userPayload id = '{}' tags = '{}' users = '{}'", userPayload.getId(), userPayload.getTags(), userPayload.getUsers());
+        //  logger.info("received userPayload id = '{}' tags = '{}' users = '{}'", userPayload.getId(), userPayload.getTags(), userPayload.getUsers());
         String meId = "@" + userPayload.getId();
         RoomEntre<TopThreeHundredNews> chatRoomEntry = (RoomEntre<TopThreeHundredNews>) this.entre;
         final ListenableFuture<ReadOnlyKeyValueStore<String, TopThreeHundredNews>> topNewsFuture = future(TOP_NEWS_STORE);
         Mono<ReadOnlyKeyValueStore<String, TopThreeHundredNews>> topNewsStores = Mono.fromFuture(toCompletableFuture(topNewsFuture));
 
         if (userPayload.getIndex().equals(0)) {
-           // List<Mono<Boolean>> allMono = new ArrayList<>();
+            // List<Mono<Boolean>> allMono = new ArrayList<>();
             TopThreeHundredNews titan = new TopThreeHundredNews();
             Mono<Boolean> myTags = topNewsStores.flatMapMany(store -> {
                 TopThreeHundredNews thn = store.get(meId);
                 chatRoomEntry.getNewsIds().put(meId, thn == null ? Collections.emptyList() : thn.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList()));
-                chatRoomEntry.onPostMessage(thn, "me", null, "top-news-" + meId + '-' + userPayload.getRandom());
+                chatRoomEntry.onPostMessage(thn != null ? thn : new TopThreeHundredNews(), "me", null, "top-news-" + meId + '-' + userPayload.getRandom());
                 return Flux.fromIterable(userPayload.getTags())
                         .publishOn(Schedulers.boundedElastic()).map(sid -> {
                             TopThreeHundredNews ttt = store.get('#' + sid);
@@ -77,7 +75,7 @@ public class Receiver {
                                 titan.getList().addAll(ttt.getList());
                                 chatRoomEntry.getNewsIds().put('#' + sid, ttt.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList()));
                             }
-                           // logger.info("MY tags list :'{}'", titan.getList());
+                            // logger.info("MY tags list :'{}'", titan.getList());
                             return true;
                         });
             }).collectList().map(booleans -> {
@@ -93,7 +91,7 @@ public class Receiver {
                             python.getList().addAll(ttt.getList());
                             chatRoomEntry.getNewsIds().put('@' + sid, ttt.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList()));
                         }
-                    //    logger.info("MY users list :'{}'", python.getList());
+                        //    logger.info("MY users list :'{}'", python.getList());
                         return true;
                     })).collectList().map(bulls -> {
                 chatRoomEntry.onPostMessage(python, "people", null, "top-news-people-" + meId + '-' + userPayload.getRandom());
@@ -104,8 +102,8 @@ public class Receiver {
             final ListenableFuture<ReadOnlyKeyValueStore<byte[], Long>> usersFuture = future(USER_STORE);
             Mono<ReadOnlyKeyValueStore<byte[], Long>> usersStores = Mono.fromFuture(toCompletableFuture(usersFuture));
             Mono<Boolean> myCounts = usersStores.map(store -> {
-                chatRoomEntry1.onPostMessage(new RecordSSE(meId, store.get(meId.getBytes())), meId, null, "user-counts-" + meId);
-              //  logger.info("MY record-sse list :'{}'", meId);
+                Long ccv = store.get(meId.getBytes());
+                chatRoomEntry1.onPostMessage(new RecordSSE(meId, ccv == null ? 0L : ccv), meId, null, "user-counts-" + meId);
                 return true;
             });
             // allMono.add(myCounts);
@@ -117,11 +115,11 @@ public class Receiver {
             Mono<Boolean> myOffers = topOffersStores.flatMapMany(store -> {
                 TopThreeHundredOffers thn = store.get(meId);
                 chatRoomEntry0.getOffersIds().put(meId, thn == null ? Collections.emptyList() : thn.getList().stream().map(offerPayload -> offerPayload.getId().toHexString()).collect(Collectors.toList()));
-                chatRoomEntry0.onPostMessage(thn, "me", null, "top-offers-" + meId + '-' + userPayload.getRandom());
-                TopThreeHundredOffers tln = store.get('@'+meId);
-                chatRoomEntry0.getOffersIds().put('@'+meId, tln == null ? Collections.emptyList() : tln.getList().stream().map(offerPayload -> offerPayload.getId().toHexString()).collect(Collectors.toList()));
-                chatRoomEntry0.onPostMessage(tln, "my", null, "top-offers-" +'@'+ meId + '-' + userPayload.getRandom());
-              //  logger.info("MY offers offerlist :'{}'", tln.getList());
+                chatRoomEntry0.onPostMessage(thn != null ? thn : new TopThreeHundredOffers(), "me", null, "top-offers-" + meId + '-' + userPayload.getRandom());
+                TopThreeHundredOffers tln = store.get('@' + meId);
+                chatRoomEntry0.getOffersIds().put('@' + meId, tln == null ? Collections.emptyList() : tln.getList().stream().map(offerPayload -> offerPayload.getId().toHexString()).collect(Collectors.toList()));
+                chatRoomEntry0.onPostMessage(tln != null ? tln : new TopThreeHundredOffers(), "my", null, "top-offers-" + '@' + meId + '-' + userPayload.getRandom());
+                //  logger.info("MY offers offerlist :'{}'", tln.getList());
                 return Flux.fromIterable(userPayload.getTags())
                         .publishOn(Schedulers.boundedElastic()).map(sid -> {
                             TopThreeHundredOffers ttt = store.get('#' + sid);
@@ -129,14 +127,14 @@ public class Receiver {
                                 titanic.getList().addAll(ttt.getList());
                                 chatRoomEntry0.getOffersIds().put('#' + sid, ttt.getList().stream().map(offerPayload -> offerPayload.getId().toHexString()).collect(Collectors.toList()));
                             }
-                         //   logger.info("MY tags offer list :'{}'", titanic.getList());
+                            //   logger.info("MY tags offer list :'{}'", titanic.getList());
                             return true;
                         });
             }).collectList().map(booleans -> {
                 chatRoomEntry0.onPostMessage(titanic, "tags", null, "top-offers-tags-" + meId + '-' + userPayload.getRandom());
                 return true;
             });
-           // allMono.add(myOffers);
+            // allMono.add(myOffers);
             TopThreeHundredOffers pitanic = new TopThreeHundredOffers();
             Mono<Boolean> myOfferUsers = topOffersStores.flatMapMany(store -> Flux.fromIterable(userPayload.getUsers())
                     .publishOn(Schedulers.boundedElastic()).map(sid -> {
@@ -145,7 +143,7 @@ public class Receiver {
                             pitanic.getList().addAll(ttt.getList());
                             chatRoomEntry0.getOffersIds().put('@' + sid, ttt.getList().stream().map(offerPayload -> offerPayload.getId().toHexString()).collect(Collectors.toList()));
                         }
-                      //  logger.info("MY offer users list :'{}'", pitanic.getList());
+                        //  logger.info("MY offer users list :'{}'", pitanic.getList());
                         return true;
                     })).collectList().map(bulls -> {
                 chatRoomEntry0.onPostMessage(pitanic, "people", null, "top-offers-people-" + meId + '-' + userPayload.getRandom());
@@ -159,10 +157,8 @@ public class Receiver {
             else tagging = userPayload.getTags().get(0);
             topNewsStores.map(store -> {
                 TopThreeHundredNews thn = store.get(tagging);
-                if (thn != null) {
-                    chatRoomEntry.getNewsIds().put(tagging, thn.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList()));
-                    chatRoomEntry.onPostMessage(thn, tagging.charAt(0) == '@' ? "person" : "tag", null, "top-news-" + tagging + '-' + userPayload.getRandom());
-                }
+                chatRoomEntry.getNewsIds().put(tagging, thn == null ? Collections.emptyList() : thn.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList()));
+                chatRoomEntry.onPostMessage(thn != null ? thn : new TopThreeHundredNews(), tagging.charAt(0) == '@' ? "person" : "tag", null, "top-news-" + tagging + '-' + userPayload.getRandom());
                 return true;
             }).subscribe();
         }
