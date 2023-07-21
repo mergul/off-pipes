@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.streams.pipes.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.Disposable;
@@ -23,8 +24,8 @@ import static java.time.LocalTime.now;
 
 public class RoomEntre<T> implements ChatRoomMessageListener<T> {
    // private static final Logger logger = LoggerFactory.getLogger(RoomEntre.class);
-    private final Flux<ServerSentEvent<T>> hotFlux;
-    private final Sinks.Many<ServerSentEvent<T>> sink;
+    private Flux<ServerSentEvent<T>> hotFlux;
+    private Sinks.Many<ServerSentEvent<T>> sink;
     private Date lastNewsEmit;
     private Date lastOffersEmit;
     public static final RetryBackoffSpec RETRY_SPEC =
@@ -48,8 +49,8 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     private final Sinks.EmitFailureHandler myEmitFailureHandler = (signalType, emitResult) -> emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED);
     // private final Map<String, Disposable> subscriberMap;//BaseSubscriber<ServerSentEvent<T>>
 
-    public RoomEntre(@Qualifier("hotFlux") Flux<ServerSentEvent<T>> hotFlux,
-                     @Qualifier("sink") Sinks.Many<ServerSentEvent<T>> sink) {
+    public RoomEntre(@Autowired @Qualifier("hotFlux") Flux<ServerSentEvent<T>> hotFlux,
+                     @Autowired @Qualifier("sink") Sinks.Many<ServerSentEvent<T>> sink) {
         this.hotFlux = hotFlux;
         this.sink = sink;
         this.newsIds = new HashMap<>();
@@ -59,7 +60,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
             if (this.lastRecord != null)
                 onPostMessage(this.lastRecord.data(), this.lastRecord.id(), null, this.lastRecord.event());
         });
-        this.myDisposable = hotFlux.retryWhen(RETRY_SPEC).subscribeOn(Schedulers.boundedElastic()).subscribe();
+        this.myDisposable = this.hotFlux.retryWhen(RETRY_SPEC).subscribeOn(Schedulers.boundedElastic()).subscribe();
         // this.hotFlux.subscribe(this.processor::onNext);
     }
 
@@ -117,7 +118,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     }
 
     public Mono<Void> publish(ServerSentEvent<T> event) {
-        sink.emitNext(event, this.myEmitFailureHandler);
+        this.sink.emitNext(event, this.myEmitFailureHandler);
         return Mono.empty();
     }
 
@@ -204,7 +205,11 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     //  @Synchronized
     public void start() {
         //  if (!isRunning()) {
-        this.myDisposable = hotFlux.retryWhen(RETRY_SPEC).subscribeOn(Schedulers.boundedElastic()).subscribe();
+        if (this.sink==null) {
+            this.sink=Sinks.many().replay().limit(5);
+            this.hotFlux=this.sink.asFlux().publishOn(Schedulers.newParallel("sse-flux"));
+        }
+        this.myDisposable = this.hotFlux.retryWhen(RETRY_SPEC).subscribeOn(Schedulers.boundedElastic()).subscribe();
         //  }
     }
 

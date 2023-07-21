@@ -35,7 +35,7 @@ public class NewsHandler {
     private static final String TOP_USERS_STORE = "windowed-users-stores";
     private static final String TOP_NEWS_STORE = "windowed-news-stores";
     private static final String USER_STORE = "stream-users-stores";
-    private static final String TOP_OFFERS_STORE="windowed-offers-stores";
+    private static final String TOP_OFFERS_STORE = "windowed-offers-stores";
     @Value("${kafka.topics.receiver-topics}")
     private String receiverTopic;
 
@@ -56,11 +56,13 @@ public class NewsHandler {
         Mono<ReadOnlyKeyValueStore<String, TopThreeHundredNews>> topNewsStores = Mono.fromFuture(Receiver.toCompletableFuture(topNewsFuture));
         return topNewsStores.flatMapIterable(store -> store.get(epithet));
     }
+
     @SuppressWarnings("unchecked")
-    public  Mono<Boolean> unsubscribeChatMessages(Mono<String> chatRoomMono) {
+    public Mono<Boolean> unsubscribeChatMessages(Mono<String> chatRoomMono) {
         RoomEntre<TopThreeHundredNews> chatRoomEntry = (RoomEntre<TopThreeHundredNews>) this.entre;
         return chatRoomMono.flatMap(chatRoomEntry::unsubscribe);
     }
+
     @SuppressWarnings("unchecked")
     public <T> Flux<ServerSentEvent<T>> subscribeChatMessages(@PathVariable("chatRoom") String chatRoom) {
         RoomEntre<T> chatRoomEntry = (RoomEntre<T>) this.entre;
@@ -77,7 +79,7 @@ public class NewsHandler {
         Mono<Boolean> fir = topNewsStores.map(store -> {
             TopThreeHundredNews newsPayloads = store.get("main");
             chatRoomEntry.getNewsIds().put("main", newsPayloads == null ? Collections.emptyList() : newsPayloads.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList()));
-            chatRoomEntry.onPostMessage(newsPayloads, "main", null, "top-news-" + num);
+            chatRoomEntry.onPostMessage(newsPayloads != null ? newsPayloads : new TopThreeHundredNews(), "main", null, "top-news-" + num);
             return true;
         });
 
@@ -87,7 +89,7 @@ public class NewsHandler {
         Mono<Boolean> firn = topOffersStores.map(store -> {
             TopThreeHundredOffers offersPayloads = store.get("main");
             chatRoomEntry0.getOffersIds().put("main", offersPayloads == null ? Collections.emptyList() : offersPayloads.getList().stream().map(offersPayload -> offersPayload.getId().toHexString()).collect(Collectors.toList()));
-            chatRoomEntry0.onPostMessage(offersPayloads, "main", null, "top-offers-" + num);
+            chatRoomEntry0.onPostMessage(offersPayloads != null ? offersPayloads : new TopThreeHundredOffers(), "main", null, "top-offers-" + num);
             return true;
         });
 
@@ -96,11 +98,11 @@ public class NewsHandler {
         Mono<ReadOnlyKeyValueStore<String, TopHundredNews>> topUsersStores = Mono.fromFuture(Receiver.toCompletableFuture(newsFuture));
         Mono<Boolean> firs = topUsersStores.map(store -> {
             TopHundredNews thn = store.get("top-tags");
-            chatRoomEntry1.onPostMessage(thn, "top-tags", null, "top-tags");
+            chatRoomEntry1.onPostMessage(thn != null ? thn : new TopHundredNews(), "top-tags", null, "top-tags");
             chatRoomEntry1.getNewsIds().put("top-tags", thn == null ? Collections.emptyList() : thn.getList().stream().map(RecordSSE::getKey).collect(Collectors.toList()));
             return true;
         });
-        return Mono.zip(fir.subscribeOn(Schedulers.boundedElastic()), firn.subscribeOn(Schedulers.boundedElastic()), firs.subscribeOn(Schedulers.boundedElastic())).map(objects -> objects.getT1()&&objects.getT2()&&objects.getT3());
+        return Mono.zip(fir.subscribeOn(Schedulers.boundedElastic()), firn.subscribeOn(Schedulers.boundedElastic()), firs.subscribeOn(Schedulers.boundedElastic())).map(objects -> objects.getT1() && objects.getT2() && objects.getT3());
         //return fir.then(firs).then(firn);
     }
 
@@ -111,7 +113,8 @@ public class NewsHandler {
         final ListenableFuture<ReadOnlyKeyValueStore<String, TopThreeHundredNews>> topNewsFuture = future(TOP_NEWS_STORE);
         Mono<ReadOnlyKeyValueStore<String, TopThreeHundredNews>> topNewsStores = Mono.fromFuture(Receiver.toCompletableFuture(topNewsFuture));
         Mono<Boolean> ff = topNewsStores.map(store -> {
-            chatRoomEntry.onPostMessage(store.get(id), "me", null, "top-news-" + id + '-' + random);
+            TopThreeHundredNews meNews = store.get(id);
+            chatRoomEntry.onPostMessage(meNews != null ? meNews : new TopThreeHundredNews(), "me", null, "top-news-" + id + '-' + random);
             return true;
         });
 
@@ -119,8 +122,10 @@ public class NewsHandler {
         final ListenableFuture<ReadOnlyKeyValueStore<String, TopThreeHundredOffers>> topOffersFuture = future(TOP_OFFERS_STORE);
         Mono<ReadOnlyKeyValueStore<String, TopThreeHundredOffers>> topOffersStores = Mono.fromFuture(Receiver.toCompletableFuture(topOffersFuture));
         Mono<Boolean> fir = topOffersStores.map(store -> {
-            chatRoomEntry0.onPostMessage(store.get(id), "me", null, "top-offers-" + id + '-' + random);
-            chatRoomEntry0.onPostMessage(store.get('@'+id), "my", null, "top-offers-" + '@'+id + '-' + random);
+            TopThreeHundredOffers meOff = store.get(id);
+            TopThreeHundredOffers myOff = store.get('@' + id);
+            chatRoomEntry0.onPostMessage(meOff != null ? meOff : new TopThreeHundredOffers(), "me", null, "top-offers-" + id + '-' + random);
+            chatRoomEntry0.onPostMessage(myOff != null ? myOff : new TopThreeHundredOffers(), "my", null, "top-offers-" + '@' + id + '-' + random);
             return true;
         });
 
@@ -128,15 +133,18 @@ public class NewsHandler {
         final ListenableFuture<ReadOnlyKeyValueStore<byte[], Long>> usersFuture = future(USER_STORE);
         Mono<ReadOnlyKeyValueStore<byte[], Long>> usersStores = Mono.fromFuture(Receiver.toCompletableFuture(usersFuture));
         Mono<Boolean> af = usersStores.map(store -> {
-            chatRoomEntry1.onPostMessage(new RecordSSE(id, store.get(id.getBytes())), id, null, "user-counts-" + id);
+            Long recLong = store.get(id.getBytes());
+            chatRoomEntry1.onPostMessage(new RecordSSE(id, recLong != null ? recLong : 0L), id, null, "user-counts-" + id);
             return true;
         });
-        return Mono.zip(ff.subscribeOn(Schedulers.boundedElastic()), af.subscribeOn(Schedulers.boundedElastic()), fir.subscribeOn(Schedulers.boundedElastic())).map(objects -> objects.getT1()&&objects.getT2()&&objects.getT3());
+        return Mono.zip(ff.subscribeOn(Schedulers.boundedElastic()), af.subscribeOn(Schedulers.boundedElastic()), fir.subscribeOn(Schedulers.boundedElastic())).map(objects -> objects.getT1() && objects.getT2() && objects.getT3());
         //return ff.then(af).then(fir);
     }
+
     Mono<Boolean> setNewsCounts(Mono<NewsPayload> payloadMono) {
         return payloadMono.flatMap(newsPayload -> this.kafkaSender.send(receiverTopic, newsPayload, newsPayload.getId().toHexString().getBytes(), true).subscribeOn(Schedulers.boundedElastic()));
     }
+
     public <K, V> ListenableFuture<ReadOnlyKeyValueStore<K, V>> future(final String storeName) {
         return pool.submit(() -> Receiver.waitUntilStoreIsQueryable(storeName, QueryableStoreTypes.keyValueStore(), this.factoryBean.getKafkaStreams()));
     }
