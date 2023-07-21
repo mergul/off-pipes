@@ -112,7 +112,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
                         .subscribeOn(Schedulers.boundedElastic()).subscribe();
             }
         }
-        this.lastRecord = getMyEvent(msg, key, ev);
+        this.lastRecord = key.equals("top-tags") ? getMyEvent(msg, key, ev): this.lastRecord;
         emitHeartBeat(key);
     }
 

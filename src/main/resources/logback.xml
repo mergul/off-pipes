@@ -49,7 +49,7 @@
         <appender-ref ref="kafkaAppender" />
     </appender>
 
-    <logger name="reactor.netty.http.server.AccessLog" level="INFO" additivity="false">
+    <logger name="reactor.netty.http.server.AccessLog" level="INFO" additivity="true">
         <appender-ref ref="Console"/>
         <appender-ref ref="Async"/>
     </logger>

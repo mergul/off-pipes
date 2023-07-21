@@ -122,6 +122,7 @@ public class KStreamConf {
                     news.getTags().add("main");
                     news.getTags().add("@" + news.getNewsOwnerId());
                     news.getTags().add("@@" + news.getOwnerId());
+                    news.getTags().add("#" + news.getNewsId());
                     return news.getTags().stream().map(s -> OfferPayload.from(news)
                             .withTags(Collections.singletonList(s)).build()).collect(Collectors.toList());
                 })
@@ -161,7 +162,7 @@ public class KStreamConf {
                         .withValueSerde(new TopThreeHundredOfferSerde(objectMapper))
         ).toStream((key, value) -> {
             RoomEntre<TopThreeHundredOffers> chatRoomEntry= (RoomEntre<TopThreeHundredOffers>) this.entre;
-            List<String> oldList = chatRoomEntry.getNewsIds().get(key);
+            List<String> oldList = chatRoomEntry.getOffersIds().get(key);
             if (oldList!=null) {
                 List<OfferPayload> diffList = value.getList().stream().filter(s->!oldList.contains(s.getId().toHexString())).collect(Collectors.toList());
                 if (diffList.size() != 0) {
