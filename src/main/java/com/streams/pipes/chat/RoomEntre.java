@@ -2,13 +2,13 @@ package com.streams.pipes.chat;
 
 import com.google.common.collect.Lists;
 import com.streams.pipes.model.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.codec.ServerSentEvent;
 import reactor.core.Disposable;
-import reactor.core.publisher.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
@@ -17,7 +17,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
 import static java.time.LocalTime.now;
@@ -26,8 +25,8 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
    // private static final Logger logger = LoggerFactory.getLogger(RoomEntre.class);
     private Flux<ServerSentEvent<T>> hotFlux;
     private Sinks.Many<ServerSentEvent<T>> sink;
-    private Date lastNewsEmit;
-    private Date lastOffersEmit;
+//    private Date lastNewsEmit;
+//    private Date lastOffersEmit;
     public static final RetryBackoffSpec RETRY_SPEC =
             Retry.backoff(5, Duration.ofSeconds(2))
                     .doBeforeRetry(retrySignal -> System.out.printf("[%s][%s] Error, before retry\n", now(), Thread.currentThread().getName()))
@@ -62,8 +61,6 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
         });
         this.myDisposable = this.hotFlux.retryWhen(RETRY_SPEC).subscribeOn(Schedulers.boundedElastic()).subscribe();
         // this.hotFlux.subscribe(this.processor::onNext);
-        this.lastNewsEmit = new Date();
-        this.lastOffersEmit = new Date();
     }
 
     private void emitHeartBeat(String s) {
@@ -86,7 +83,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
                     .flatMapSequential(tEvent -> Mono.fromCallable(() -> publish(tEvent)).onErrorResume(e -> Mono.empty()))
                     .subscribeOn(Schedulers.parallel())
                     .subscribe();
-            this.lastNewsEmit = date;
+           // this.lastNewsEmit = date;
         } else if (msg instanceof TopThreeHundredOffers) {
             //  logger.info("emit offers {} -- {} -- {}", ev, key, date);
             TopThreeHundredOffers threeHundredOffers = new TopThreeHundredOffers();
@@ -99,7 +96,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
                     .flatMapSequential(tEvent -> Mono.fromCallable(() -> publish(tEvent))
                             .onErrorResume(e -> Mono.empty()))
                     .subscribeOn(Schedulers.parallel()).subscribe();
-            this.lastOffersEmit = date;
+           // this.lastOffersEmit = date;
         } else if (msg instanceof TopHundredNews && (this.lastTagsEmit == null || date == null
                 || ((date.getTime() - this.lastTagsEmit.getTime()) / (1000) % 60) > 30)) {
             //  logger.info("emit  {} -- {} -- {}", ev, key, date);
@@ -194,15 +191,15 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
         return Mono.just(true);
     }
 
-    public static Sinks.EmitFailureHandler retryOnNonSerializedElse(Sinks.EmitFailureHandler fallback) {
-        return (signalType, emitResult) -> {
-            if (emitResult == Sinks.EmitResult.FAIL_NON_SERIALIZED) {
-                LockSupport.parkNanos(10);
-                return true;
-            } else
-                return fallback.onEmitFailure(signalType, emitResult);
-        };
-    }
+//    public static Sinks.EmitFailureHandler retryOnNonSerializedElse(Sinks.EmitFailureHandler fallback) {
+//        return (signalType, emitResult) -> {
+//            if (emitResult == Sinks.EmitResult.FAIL_NON_SERIALIZED) {
+//                LockSupport.parkNanos(10);
+//                return true;
+//            } else
+//                return fallback.onEmitFailure(signalType, emitResult);
+//        };
+//    }
 
     //  @Synchronized
     public void start() {
@@ -222,7 +219,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     }
 
     // @Synchronized
-    public Boolean isRunning() {
-        return this.myDisposable != null;
-    }
+//    public Boolean isRunning() {
+//        return this.myDisposable != null;
+//    }
 }
