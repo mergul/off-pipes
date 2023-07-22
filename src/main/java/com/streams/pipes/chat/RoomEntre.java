@@ -65,7 +65,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
 
     private void emitHeartBeat(String s) {
         this.disposable.dispose();
-        this.disposable = Mono.just(s).delayElement(Duration.ofSeconds(100))
+        this.disposable = Mono.just(s).delayElement(Duration.ofSeconds(55))
                 .subscribe(s1 -> onPostMessage(this.lastRecord.data(), this.lastRecord.id(), null, this.lastRecord.event()));
     }
 
