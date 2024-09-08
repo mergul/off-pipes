@@ -3,35 +3,37 @@ package com.streams.pipes.service;
 import com.google.common.util.concurrent.*;
 import com.streams.pipes.chat.RoomEntre;
 import com.streams.pipes.config.streams.KStreamConf;
-import com.streams.pipes.model.*;
+import com.streams.pipes.model.RecordSSE;
+import com.streams.pipes.model.TopThreeHundredNews;
+import com.streams.pipes.model.TopThreeHundredOffers;
+import com.streams.pipes.model.UserPayload;
 import lombok.SneakyThrows;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.*;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.stream.Collectors;
 
 @Service
 public class Receiver {
-    // private static final Logger logger = LoggerFactory.getLogger(Sender.class);
+    private static final Logger logger = LoggerFactory.getLogger(Sender.class);
 
     private static final String TOP_NEWS_STORE = "windowed-news-stores";
     private static final String USER_STORE = "stream-users-stores";
@@ -54,8 +56,8 @@ public class Receiver {
     @SuppressWarnings("unchecked")
     @SneakyThrows
     @KafkaListener(topics = "${kafka.topics.auths}", properties = {"spring.json.value.default.type=com.streams.pipes.model.UserPayload", "spring.json.use.type.headers=false"})
-    public void receiveFoo(UserPayload userPayload) {
-        //  logger.info("received userPayload id = '{}' tags = '{}' users = '{}'", userPayload.getId(), userPayload.getTags(), userPayload.getUsers());
+    public void receiveFoo(@Payload UserPayload userPayload) {
+        logger.info("received userPayload id = '{}' tags = '{}' users = '{}'", userPayload.getId(), userPayload.getTags(), userPayload.getUsers());
         String meId = "@" + userPayload.getId();
         RoomEntre<TopThreeHundredNews> chatRoomEntry = (RoomEntre<TopThreeHundredNews>) this.entre;
         final ListenableFuture<ReadOnlyKeyValueStore<String, TopThreeHundredNews>> topNewsFuture = future(TOP_NEWS_STORE);
@@ -150,7 +152,12 @@ public class Receiver {
                 return true;
             });
 
-            Mono.zip(myUsers.subscribeOn(Schedulers.boundedElastic()), myTags.subscribeOn(Schedulers.boundedElastic()), myCounts.subscribeOn(Schedulers.boundedElastic()), myOffers.subscribeOn(Schedulers.boundedElastic()), myOfferUsers.subscribeOn(Schedulers.boundedElastic())).subscribe();
+            Mono.zip(myUsers.subscribeOn(Schedulers.boundedElastic()),
+                            myTags.subscribeOn(Schedulers.boundedElastic()),
+                            myCounts.subscribeOn(Schedulers.boundedElastic()),
+                            myOffers.subscribeOn(Schedulers.boundedElastic()),
+                            myOfferUsers.subscribeOn(Schedulers.boundedElastic()))
+                    .subscribe();
         } else {
             String tagging;
             if (userPayload.getIndex().equals(2)) tagging = userPayload.getUsers().get(0);
@@ -164,7 +171,13 @@ public class Receiver {
         }
         latch.countDown();
     }
-
+/*
+@KafkaListener(id = "two", topics = "two",
+        properties = "value.deserializer:org.apache.kafka.common.serialization.ByteArrayDeserializer")
+public void listen2(byte[] in) {
+    System.out.println("2: " + new String(in));
+}
+ */
     public static <K, V> CompletableFuture<ReadOnlyKeyValueStore<K, V>> toCompletableFuture(ListenableFuture<ReadOnlyKeyValueStore<K, V>> listenableFuture) {
         final CompletableFuture<ReadOnlyKeyValueStore<K, V>> completableFuture = new CompletableFuture<>();
         Futures.addCallback(listenableFuture, new FutureCallback<>() {

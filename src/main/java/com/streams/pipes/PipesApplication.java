@@ -15,6 +15,7 @@ import org.springframework.kafka.annotation.EnableKafkaStreams;
 		"com.streams.pipes.config.producers",
 		"com.streams.pipes.config.consumers",
 		"com.streams.pipes.config.processor",
+		"com.streams.pipes.config.hazelcast",
 		"com.streams.pipes.model",
 		"com.streams.pipes.chat",
 		"com.streams.pipes.service",

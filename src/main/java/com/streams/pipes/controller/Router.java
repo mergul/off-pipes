@@ -47,6 +47,9 @@ public class Router {
                         .andRoute(RequestPredicates.PATCH("/setNewsCounts"),
                                 request -> ServerResponse.ok()
                                         .body(newsHandler.setNewsCounts(request.bodyToMono(NewsPayload.class)), Boolean.class))
+                        .andRoute(RequestPredicates.GET("/start-word"),
+                                request -> ServerResponse.ok()
+                                        .body(newsHandler.startWordCountJob(), String.class))
                         .andRoute(RequestPredicates.PATCH("/unsubscribe"),
                                 request -> ServerResponse.ok()
                                         .body(newsHandler.unsubscribeChatMessages(request.bodyToMono(String.class)), Boolean.class))

@@ -8,20 +8,18 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.jackson.JsonComponent;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 @JsonComponent
 public class TopHundredSerde implements Serde<TopHundredNews> {
-
-    @Autowired
     private final ObjectMapper objectMapper;
-
-    public TopHundredSerde(ObjectMapper objectMapper) {
+    public TopHundredSerde(@Qualifier("userMapper") ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 

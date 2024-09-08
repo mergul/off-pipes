@@ -62,11 +62,9 @@ public class NewsPayload{
         return clean;
     }
 
-
     public String getNewsOwnerId() {
         return newsOwnerId;
     }
-
 
     public Date getDate() {
         return date;
@@ -95,7 +93,6 @@ public class NewsPayload{
     public List<String> getOffers() {
         return offers;
     }
-
 
     public static Builder of() {
         return new Builder();
@@ -155,6 +152,7 @@ public class NewsPayload{
         private Long count;
         private Date date;
         private List<String> offers;
+
         public Builder() {
         }
 
@@ -211,14 +209,17 @@ public class NewsPayload{
             this.clean = clean;
             return this;
         }
+
         public Builder withOwnerUrl(String ownerUrl) {
             this.ownerUrl = ownerUrl;
             return this;
         }
+
         public Builder withOffers(List<String> offers) {
             this.offers = offers;
             return this;
         }
+
         public NewsPayload build() {
             return new NewsPayload(newsId, newsOwnerId, tags, clean, newsOwner, topics, date, topic, count, thumb, ownerUrl, offers);
         }

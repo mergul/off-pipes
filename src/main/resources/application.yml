@@ -31,12 +31,28 @@ spring:
                 type: com.streams.pipes.model.NewsPayload
             trusted:
               packages: "*"
-    producer:
+#    producer:
+#      properties:
+#        spring:
+#          json:
+#            add:
+#              type:
+#                headers: false
+#            type:
+#              mapping: news:com.streams.pipes.model.NewsPayload,user:com.streams.pipes.model.UserPayload,offer:com.streams.pipes.model.OfferPayload
+
+    consumer:
       properties:
-        spring:
-          json:
-            add:
-              type:
-                headers: false
-            type:
-              mapping: news:com.streams.pipes.model.NewsPayload,user:com.streams.pipes.model.UserPayload,offer:com.streams.pipes.model.OfferPayload
+        partition:
+          assignment:
+            strategy: org.apache.kafka.clients.consumer.RoundRobinAssignor
+#        spring:
+#          json:
+#            value:
+#              default:
+#                type: com.streams.pipes.model.UserPayload
+#            add:
+#              type:
+#                headers: false
+#            type:
+#              mapping: news:com.streams.pipes.model.NewsPayload,user:com.streams.pipes.model.UserPayload,offer:com.streams.pipes.model.OfferPayload

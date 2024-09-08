@@ -9,9 +9,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.support.converter.ByteArrayJsonMessageConverter;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.HashMap;
@@ -31,32 +32,48 @@ public class ReceiverConfig {
     props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
     props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+//    props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, JsonNode.class);
     props.put(ConsumerConfig.GROUP_ID_CONFIG, "json");
     props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+//    props.put(JsonDeserializer.TYPE_MAPPINGS, "news:com.streams.pipes.model.NewsPayload,user:com.streams.pipes.model.UserPayload,offer:com.streams.pipes.model.OfferPayload");
 
     return props;
   }
 
   @Bean
   public ConsumerFactory<byte[], Object> consumerFactory() {
-    return new DefaultKafkaConsumerFactory<>(consumerConfigs(), new ByteArrayDeserializer(),
-        new JsonDeserializer<>().trustedPackages("*"));
+    try (JsonDeserializer<Object> jsonDeserializer = new JsonDeserializer<>()) {
+      Map<String, Object> deserProps = new HashMap<>();
+      deserProps.put(JsonDeserializer.TYPE_MAPPINGS,
+              "news:com.streams.pipes.model.NewsPayload, user:com.streams.pipes.model.UserPayload, offer:com.streams.pipes.model.OfferPayload");
+      jsonDeserializer.configure(deserProps, false);
+      return new DefaultKafkaConsumerFactory<>(consumerConfigs(), new ByteArrayDeserializer(),
+              jsonDeserializer.trustedPackages("*"));
+    }
   }
-
   @Bean
-  public ConcurrentKafkaListenerContainerFactory<byte[], Object> kafkaListenerContainerFactory() {
+  public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<byte[], Object>> kafkaListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<byte[], Object> factory =
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
-    factory.setMessageConverter(new ByteArrayJsonMessageConverter());
-    factory.setErrorHandler((thrownException, data) -> {
-      String s = thrownException.getMessage().split("Error deserializing key/value for partition ")[1].split(". If needed, please seek past the record to continue consumption.")[0];
-      String topics = s.split("-")[0];
-      int offset = Integer.parseInt(s.split("offset ")[1]);
-      int partition = Integer.parseInt(s.split("-")[1].split(" at")[0]);
-      logger.info("Skipping " + topics + "-" + partition + " offset " + offset);
-    });
+    factory.setCommonErrorHandler(new GlobalErrorHandler());
+    factory.setConcurrency(3);
+//    factory.setRecordMessageConverter(multiTypeConverter());
+    factory.getContainerProperties().setPollTimeout(3000);
     return factory;
   }
-
+//  @Bean
+//  public RecordMessageConverter multiTypeConverter() {
+//    StringJsonMessageConverter converter = new StringJsonMessageConverter();
+//    DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+//    typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID);
+//    typeMapper.addTrustedPackages("com.streams.pipes");
+//    Map<String, Class<?>> mappings = new HashMap<>();
+//    mappings.put("news", NewsPayload.class);
+//    mappings.put("user", UserPayload.class);
+//    mappings.put("offer", OfferPayload.class);
+//    typeMapper.setIdClassMapping(mappings);
+//    converter.setTypeMapper(typeMapper);
+//    return converter;
+//  }
 }

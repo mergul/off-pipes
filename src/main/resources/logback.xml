@@ -4,7 +4,7 @@
               class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>
-                %green(%d{HH:mm:ss.SSS}) [%thread] %-5level %logger{36} : %msg%n%throwable
+                %green(%d{HH:mm:ss.SSS}) [%.9thread] %-5level %logger{0} : %yellow(%replace(%msg){'\[(.*?)\]', '[T]'}%n) %red(%throwable)
             </pattern>
         </encoder>
     </appender>
@@ -28,6 +28,9 @@
     </appender>
 
     <appender name="kafkaAppender" class="com.github.danielwegener.logback.kafka.KafkaAppender">
+        <!-- <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <maxHistory>1</maxHistory>
+        </rollingPolicy> -->
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
@@ -41,6 +44,7 @@
         <producerConfig>linger.ms=100</producerConfig>
         <producerConfig>max.block.ms=0</producerConfig>
         <producerConfig>client.id=${HOSTNAME}-${CONTEXT_NAME}-logback-relaxed</producerConfig>
+        <producerConfig>compression.type=gzip</producerConfig>
     </appender>
 
     <appender name="AsyncKafka" class="ch.qos.logback.classic.AsyncAppender">

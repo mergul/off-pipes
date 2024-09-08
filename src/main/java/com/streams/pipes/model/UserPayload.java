@@ -17,6 +17,7 @@ public class UserPayload {
     private List<String> offers;
 
     public UserPayload(){}
+
     @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
     public UserPayload(String id, List<String> tags, List<String> users, Integer index, String random, Boolean isAdmin, List<String> offers) {
         this.id = id;
@@ -31,45 +32,31 @@ public class UserPayload {
     public List<String> getTags() {
         return tags;
     }
-    public void setTags(List<String> tags) {
-        this.tags = tags;
-    }
+
     public List<String> getUsers() {
         return users;
     }
-    public void setUsers(List<String> users) {
-        this.users = users;
-    }
+
     public Integer getIndex() {
         return index;
     }
-    public void setIndex(Integer index) {
-        this.index = index;
-    }
+
     public String getRandom() {
         return random;
     }
-    public void setRandom(String random) {
-        this.random = random;
-    }
+
     public String getId() {
         return id;
     }
-    public void setId(String id) {
-        this.id = id;
-    }
+
     public Boolean getIsAdmin() {
         return isAdmin;
     }
-    public void setIsAdmin(Boolean admin) {
-        isAdmin = admin;
-    }
+
     public List<String> getOffers() {
         return offers;
     }
-    public void setOffers(List<String> offers) {
-        this.offers = offers;
-    }
+
     @Override
     public String toString() {
         return "UserPayload{" +
@@ -82,6 +69,7 @@ public class UserPayload {
                 ", offers=" + offers +
                 '}';
     }
+
     public static Builder of() {
         return new Builder();
     }
@@ -89,6 +77,7 @@ public class UserPayload {
     public static Builder of(String id) {
         return new Builder(id);
     }
+
     public static Builder from(UserPayload userPayload) {
         final Builder builder = new Builder();
         builder.id = userPayload.id;
@@ -123,18 +112,22 @@ public class UserPayload {
             this.id = id;
             return this;
         }
+
         public Builder withIndex(Integer index) {
             this.index = index;
             return this;
         }
+
         public Builder withRandom(String random) {
             this.random = random;
             return this;
         }
+
         public Builder withIsAdmin(Boolean isAdmin) {
             this.isAdmin = isAdmin;
             return this;
         }
+
         public Builder withTags(List<String> tags) {
             this.tags = tags;
             return this;
@@ -144,10 +137,12 @@ public class UserPayload {
             this.users = users;
             return this;
         }
+
         public Builder withOffers(List<String> offers) {
             this.offers = offers;
             return this;
         }
+
         public UserPayload build() {
             return new UserPayload(id, tags, users, index, random, isAdmin, offers);
         }

@@ -5,6 +5,7 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.streams.pipes.chat.RoomEntre;
 import com.streams.pipes.model.*;
+import com.streams.pipes.service.MyJetService;
 import com.streams.pipes.service.Receiver;
 import com.streams.pipes.service.Sender;
 import lombok.SneakyThrows;
@@ -20,8 +21,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.time.Duration;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
@@ -32,6 +33,8 @@ public class NewsHandler {
 
     private final StreamsBuilderFactoryBean factoryBean;
     private final Sender kafkaSender;
+    private final MyJetService myJetService;
+
     private static final String TOP_USERS_STORE = "windowed-users-stores";
     private static final String TOP_NEWS_STORE = "windowed-news-stores";
     private static final String USER_STORE = "stream-users-stores";
@@ -44,9 +47,10 @@ public class NewsHandler {
     );
     private final RoomEntre<?> entre;
 
-    public NewsHandler(StreamsBuilderFactoryBean factoryBean, Sender kafkaSender, @Qualifier(value = "roomEntre") RoomEntre<?> entre) {
+    public NewsHandler(StreamsBuilderFactoryBean factoryBean, Sender kafkaSender, MyJetService myJetService, @Qualifier(value = "roomEntre") RoomEntre<?> entre) {
         this.factoryBean = factoryBean;
         this.kafkaSender = kafkaSender;
+        this.myJetService = myJetService;
         this.entre = entre;
     }
 
@@ -102,6 +106,14 @@ public class NewsHandler {
             chatRoomEntry1.getNewsIds().put("top-tags", thn == null ? Collections.emptyList() : thn.getList().stream().map(RecordSSE::getKey).collect(Collectors.toList()));
             return true;
         });
+//        String cont = readFromInputStream();
+//        RoomEntre<String> chatRoomEntryw = (RoomEntre<String>) roomEntry;
+//        Mono<Boolean> ger = Mono.fromCallable(() -> {
+//                    chatRoomEntryw.onPostMessage(cont, "script", null, "script");
+//                    return true;
+//                }
+//        );
+
         return Mono.zip(fir.subscribeOn(Schedulers.boundedElastic()), firn.subscribeOn(Schedulers.boundedElastic()), firs.subscribeOn(Schedulers.boundedElastic())).map(objects -> objects.getT1() && objects.getT2() && objects.getT3());
         //return fir.then(firs).then(firn);
     }
@@ -142,11 +154,19 @@ public class NewsHandler {
     }
 
     Mono<Boolean> setNewsCounts(Mono<NewsPayload> payloadMono) {
-        return payloadMono.flatMap(newsPayload -> this.kafkaSender.send(receiverTopic, newsPayload, newsPayload.getId().toHexString().getBytes(), true).subscribeOn(Schedulers.boundedElastic()));
+        return payloadMono.flatMap(newsPayload -> this.kafkaSender.send(this.receiverTopic, newsPayload, newsPayload.getId().toHexString().getBytes(), true).subscribeOn(Schedulers.boundedElastic()));
     }
+    public Mono<String> startWordCountJob() {
+        return myJetService.startWordCountJob().map(de->"Started Jet Job");
+    }
+//    private String readFromInputStream()
+//            throws IOException {
+//        Path path = Paths.get("src/main/resources/static/zone.js");
+//        return String.join(System.lineSeparator(), Files.readAllLines(path));
+//    }
 
     public <K, V> ListenableFuture<ReadOnlyKeyValueStore<K, V>> future(final String storeName) {
-        return pool.submit(() -> Receiver.waitUntilStoreIsQueryable(storeName, QueryableStoreTypes.keyValueStore(), this.factoryBean.getKafkaStreams()));
+        return pool.submit(() -> Receiver.waitUntilStoreIsQueryable(storeName, QueryableStoreTypes.keyValueStore(), Objects.requireNonNull(this.factoryBean.getKafkaStreams())));
     }
 }
 

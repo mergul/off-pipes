@@ -45,28 +45,4 @@ public class SenderConfig {
     return template;
   }
 
-//  @Bean
-//  public Map<String, Object> producerConfigs() {
-//    Map<String, Object> props = new HashMap<>();
-//    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-//    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
-//    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-//
-//    return props;
-//  }
-//
-//  @Bean
-//  public ProducerFactory<byte[], Object> producerFactory() {
-//    return new DefaultKafkaProducerFactory<>(producerConfigs(),
-//            new ByteArraySerializer(), new JsonSerializer<>(new ObjectMapper()));
-//  }
-//
-//  @Bean
-//  public KafkaTemplate<byte[],Object> kafkaTemplate() {
-//    KafkaTemplate<byte[], Object> template = new KafkaTemplate<>(producerFactory());
-//    template.setMessageConverter(new ByteArrayJsonMessageConverter());
-//
-//    return template;
-//  }
-
 }

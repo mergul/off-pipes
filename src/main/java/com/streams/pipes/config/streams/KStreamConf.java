@@ -1,11 +1,10 @@
 package com.streams.pipes.config.streams;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streams.pipes.chat.RoomEntre;
 import com.streams.pipes.model.*;
 import com.streams.pipes.model.serdes.*;
-import com.streams.pipes.service.Sender;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serdes;
@@ -17,8 +16,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
 import org.apache.kafka.streams.state.KeyValueStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,12 +60,10 @@ public class KStreamConf {
     public final static CountDownLatch startupLatch = new CountDownLatch(1);
     private final ObjectMapper objectMapper;
     private final RoomEntre<?> entre;
-    private final Sender kafkaSender;
 
-    public KStreamConf(ObjectMapper objectMapper, RoomEntre<?> entre/*, @Qualifier(value = "miProcessor") UnicastProcessor<BalanceRecord> eventPublisher*/, Sender kafkaSender) {
+    public KStreamConf(@Qualifier("userMapper") ObjectMapper objectMapper, RoomEntre<?> entre/*, @Qualifier(value = "miProcessor") UnicastProcessor<BalanceRecord> eventPublisher*/) {
         this.objectMapper = objectMapper;
         this.entre = entre;
-        this.kafkaSender = kafkaSender;
     }
     @Bean
     public RecordMessageConverter converter() {
@@ -81,7 +77,7 @@ public class KStreamConf {
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArray().getClass());
         props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, JsonSerde.class);
         props.put(StreamsConfig.STATE_DIR_CONFIG, "/data");
-        props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE);
+        props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
         props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, 5);
         props.put(StreamsConfig.REPLICATION_FACTOR_CONFIG, 1);
@@ -113,7 +109,7 @@ public class KStreamConf {
     @SuppressWarnings("unchecked")
     @Bean
     public KStream<byte[], RecordSSE> kStream(StreamsBuilder kStreamBuilder) {
-        KStream<byte[], NewsPayload> previewsInput = kStreamBuilder.stream(receiverTopic, Consumed.with(new Serdes.ByteArraySerde(), new NewsPayloadSerde()));
+        KStream<byte[], NewsPayload> previewsInput = kStreamBuilder.stream(this.receiverTopic, Consumed.with(new Serdes.ByteArraySerde(), new NewsPayloadSerde()));
         KStream<byte[], OfferPayload> offerviews = kStreamBuilder.stream(offerviewsTopics, Consumed.with(new Serdes.ByteArraySerde(), new OfferPayloadSerde()));
 
         KStream<OfferPayload, OfferPayload> offerstream = offerviews
@@ -133,7 +129,7 @@ public class KStreamConf {
         //count separated tag news
         KTable<Windowed<OfferPayload>, Long> offerOut = offerstream
                 .groupByKey(Grouped.with(new OfferPayloadSerde(), new OfferPayloadSerde()))
-                .windowedBy(TimeWindows.of(Duration.ofHours(6L)))
+                .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofHours(6L)))
                 .count();
                 //.suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
 
@@ -164,8 +160,8 @@ public class KStreamConf {
             RoomEntre<TopThreeHundredOffers> chatRoomEntry= (RoomEntre<TopThreeHundredOffers>) this.entre;
             List<String> oldList = chatRoomEntry.getOffersIds().get(key);
             if (oldList!=null) {
-                List<OfferPayload> diffList = value.getList().stream().filter(s->!oldList.contains(s.getId().toHexString())).collect(Collectors.toList());
-                if (diffList.size() != 0) {
+                List<OfferPayload> diffList = value.getList().stream().filter(s->!oldList.contains(s.getId().toHexString())).toList();
+                if (!diffList.isEmpty()) {
                     TopThreeHundredOffers ttmOffers=new TopThreeHundredOffers();
                     ttmOffers.getList().addAll(diffList);
                     List<String> newList = value.getList().stream().map(offerPayload -> offerPayload.getId().toHexString()).collect(Collectors.toList());
@@ -199,7 +195,7 @@ public class KStreamConf {
         //count separated tag news
         KTable<Windowed<NewsPayload>, Long> out = stream
                 .groupByKey(Grouped.with(new NewsPayloadSerde(), new NewsPayloadSerde()))
-                .windowedBy(TimeWindows.of(Duration.ofHours(6L)))
+                .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofHours(6L)))
                 .count();
                // .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()));
         // Serialized.with(new NewsPayloadSerde(), new NewsPayloadSerde())
@@ -230,8 +226,8 @@ public class KStreamConf {
             RoomEntre<TopThreeHundredNews> chatRoomEntry= (RoomEntre<TopThreeHundredNews>) this.entre;
             List<String> oldList = chatRoomEntry.getNewsIds().get(key);
             if (oldList!=null) {
-                List<NewsPayload> diffList = value.getList().stream().filter(s->!oldList.contains(s.getId().toHexString())).collect(Collectors.toList());
-                if (diffList.size() != 0) {
+                List<NewsPayload> diffList = value.getList().stream().filter(s->!oldList.contains(s.getId().toHexString())).toList();
+                if (!diffList.isEmpty()) {
                     TopThreeHundredNews tthNews=new TopThreeHundredNews();
                     tthNews.getList().addAll(diffList);
                     List<String> newList = value.getList().stream().map(newsPayload -> newsPayload.getId().toHexString()).collect(Collectors.toList());
@@ -276,7 +272,7 @@ public class KStreamConf {
         ).toStream((key, value) -> {
             List<String> maList = value.getList().stream().map(RecordSSE::getKey).collect(Collectors.toList());
             RoomEntre<TopHundredNews> chatRoomEntry= (RoomEntre<TopHundredNews>) this.entre;
-            if (chatRoomEntry.getNewsIds().get(key)==null || !chatRoomEntry.getNewsIds().get(key).containsAll(maList)) {
+            if (chatRoomEntry.getNewsIds().get(key)==null || !new HashSet<>(chatRoomEntry.getNewsIds().get(key)).containsAll(maList)) {
                 TopHundredNews thn = new TopHundredNews();
                 value.forEach(recordSSE -> {
                     if (recordSSE.getKey().charAt(0) == ('#')) {

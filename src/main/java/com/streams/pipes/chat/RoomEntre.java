@@ -2,6 +2,9 @@ package com.streams.pipes.chat;
 
 import com.google.common.collect.Lists;
 import com.streams.pipes.model.*;
+import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.codec.ServerSentEvent;
@@ -22,7 +25,7 @@ import java.util.stream.Collectors;
 import static java.time.LocalTime.now;
 
 public class RoomEntre<T> implements ChatRoomMessageListener<T> {
-   // private static final Logger logger = LoggerFactory.getLogger(RoomEntre.class);
+    private static final Logger logger = LoggerFactory.getLogger(RoomEntre.class);
     private Flux<ServerSentEvent<T>> hotFlux;
     private Sinks.Many<ServerSentEvent<T>> sink;
 //    private Date lastNewsEmit;
@@ -43,7 +46,9 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     private final AtomicBoolean shouldWait = new AtomicBoolean(false);
     private final Phaser tasksFinished = new Phaser(1);
     private ServerSentEvent<T> lastRecord;
+    @Getter
     private final Map<String, List<String>> newsIds;
+    @Getter
     private final Map<String, List<String>> offersIds;
     private final Sinks.EmitFailureHandler myEmitFailureHandler = (signalType, emitResult) -> emitResult.equals(Sinks.EmitResult.FAIL_NON_SERIALIZED);
     // private final Map<String, Disposable> subscriberMap;//BaseSubscriber<ServerSentEvent<T>>
@@ -72,14 +77,14 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
     @Override
     public void onPostMessage(T msg, String key, Date date, String ev) {
         if (msg instanceof TopThreeHundredNews) {
-            //  logger.info("emit  {} -- {} -- {}", ev, key, date);
+            logger.info("emit  {} -- {} -- {}", ev, key, date);
             TopThreeHundredNews threeHundredNews = new TopThreeHundredNews();
             threeHundredNews.getList().addAll(getTopList(((TopThreeHundredNews) msg).getList()));
             this.disposableNews = Mono.fromCallable(() -> publish(getMyEvent((T) threeHundredNews, key, ev)))
                     .onErrorResume(e -> Mono.empty())
                     .subscribeOn(Schedulers.boundedElastic())
                     .thenMany(getPartialEvents(getSkipList(((TopThreeHundredNews) msg).getList()), key, ev))
-                    .delayElements(Duration.ofSeconds(1L))
+                    .delayElements(Duration.ofSeconds(3L))
                     .flatMapSequential(tEvent -> Mono.fromCallable(() -> publish(tEvent)).onErrorResume(e -> Mono.empty()))
                     .subscribeOn(Schedulers.parallel())
                     .subscribe();
@@ -130,14 +135,6 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
         return this.hotFlux;
     }
 
-    public Map<String, List<String>> getNewsIds() {
-        return newsIds;
-    }
-
-    public Map<String, List<String>> getOffersIds() {
-        return offersIds;
-    }
-
     public ServerSentEvent<T> getMyEvent(T msg, String key, String ev) {
         return ServerSentEvent.<T>builder().event(ev).data(msg).id(key).comment("keep alive").build();
     }
@@ -163,7 +160,7 @@ public class RoomEntre<T> implements ChatRoomMessageListener<T> {
         return Flux.fromIterable(lists).publishOn(Schedulers.boundedElastic()).flatMap(list -> {
             TopThreeHundredNews titan = new TopThreeHundredNews();
             titan.getList().addAll(list);
-            //   logger.info("finished bounded {}, -- {}, -- {}", key, ev, list.size());
+            logger.info("finished bounded {}, -- {}, -- {}", key, ev, list.size());
             return Mono.fromCallable(() -> getMyEvent((T) titan, key, ev));
         });
     }
